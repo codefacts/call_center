@@ -1,0 +1,19 @@
+{
+  "CURRENT_PROFILE": "dev",
+  "PROFILES": {
+    "dev": {
+      "PORT": 8085,
+      "dev-mode": false,
+      "templateDir": "/home/shahadat/IdeaProjects/crm-web/src/main/resources/templates-s/en_US",
+      "myTemplateDir": "/home/shahadat/IdeaProjects/call_center/src/main/resources/my-templates-s/en_US",
+      "STATIC_DIRECTORY": "/home/shahadat/IdeaProjects/crm-web/src/main/resources/static",
+      "PUBLIC_DIRECTORY": "/home/shahadat/IdeaProjects/crm-web/src/main/resources/public",
+      "MY_STATIC_DIRECTORY": "/home/shahadat/IdeaProjects/call_center/src/main/resources/my-static",
+      "MY_PUBLIC_DIRECTORY": "/home/shahadat/IdeaProjects/call_center/src/main/resources/my-public",
+      "CALL_REVIEW_PORT": 8545,
+      "CALL_REVIEW_HOST": "192.168.100.130"
+    },
+    "production": {
+    }
+  }
+}

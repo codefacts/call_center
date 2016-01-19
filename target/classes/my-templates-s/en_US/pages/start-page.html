@@ -1,0 +1,41 @@
+<div class="panel panel-primary" style="
+    width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 10%;">
+    <div class="panel-heading">Log in</div>
+    <div class="panel-body">
+
+        <form method="post" enctype="application/x-www-form-urlencoded">
+
+            <div class="form-group">
+
+                <select id="agent" name="agent" class="form-control">
+                    <option value="">Please select your name</option>
+                    ~for op in agents:
+                    <option value="~op.id~">~op.name~ [#~op.id~]</option>
+                    :~
+                </select>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<script>
+    $('#agent').change(function (e) {
+        $.ajax({
+            url: '/login',
+            cache: false,
+            data: {id: e.target.value},
+            method: "post",
+            success: function (js) {
+                location.href = "/dashboard";
+            },
+            error: function () {
+                alert("Error. Please notify your supervisor.");
+            }
+        });
+    });
+</script>

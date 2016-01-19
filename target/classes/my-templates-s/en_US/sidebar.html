@@ -1,0 +1,11 @@
+<div id="sidebar" class="col-md-2">
+    <div class="list-group">
+
+        ~for link in links:
+        <a href="~link.uri~" class="list-group-item ~link.active~">
+            ~link.label~
+        </a>
+        :~
+
+    </div>
+</div>

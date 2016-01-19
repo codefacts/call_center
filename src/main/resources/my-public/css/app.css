@@ -1,0 +1,84 @@
+#stickyHeader {
+    border-radius: 4px;
+    display: block;
+    opacity: 0.77777777;
+    cursor: pointer;
+    position: fixed;
+    width: 40px;
+    background: #F5FCEB;
+    right: 0;
+    top: 200px;
+    box-shadow: 0 0 16px -1px rgba(0, 0, 0, .75);
+    transition: .1s ease-in-out;
+    overflow: hidden;
+}
+
+#cartStickyHeader {
+    border-radius: 4px;
+    display: block;
+    cursor: pointer;
+    position: fixed;
+    width: 400px;
+    background: #F5FCEB;
+    right: 0;
+    top: 200px;
+    box-shadow: 0 0 16px -1px rgba(0, 0, 0, .75);
+    transition: .1s ease-in-out;
+    overflow: hidden;
+}
+
+div.TablePrimary {
+
+}
+
+div.TablePrimary table.MainTable tbody.MainTableBody tr.selected td {
+    /*background-image: linear-gradient(to bottom, #dff0d8 0, #c8e5bc 100%);*/
+    font-weight: bold;
+}
+
+div.TablePrimary table.MainTable tbody.MainTableBody tr.selected td:first-child {
+}
+
+div.TablePrimary table.MainTable tbody.MainTableBody tr.selected td:last-child {
+}
+
+div.contact-details-row {
+    margin-bottom: 12px;
+}
+
+.call-control {
+    display: inline-block;
+}
+
+.call-form-label {
+    padding-top: 6px;
+    display: inline-block;
+}
+
+.call_label_inline {
+    display: inline-block;
+    width: 100%;
+}
+
+input.call_checkbox {
+    width: 21px;
+    height: 21px;
+}
+
+.call_checkbox_label {
+    vertical-align: top;
+    margin-top: 4px;
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.checkbox-form {
+    margin-top: 32px;
+    margin-bottom: 24px;
+}
+
+.checkbox-form input[type=checkbox] {
+    width: 21px;
+    height: 21px;
+    margin-top: 0px;
+}
