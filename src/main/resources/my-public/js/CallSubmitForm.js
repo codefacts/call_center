@@ -79,19 +79,19 @@ site.reactjs.CallSubmitForm = React.createClass({
                                 <div className="col-md-3">
                                     <label className="checkbox-inline call_label_inline">
                                         <input className="call_checkbox" type="checkbox" id="inlineCheckbox1"
-                                               name="dob_matched"
-                                               checked={form.dob_matched}
-                                               onChange={$this.onValueChange}/>
-                                        <span className="call_checkbox_label">DOB Matched</span>
-                                    </label>
-                                </div>
-                                <div className="col-md-3">
-                                    <label className="checkbox-inline call_label_inline">
-                                        <input className="call_checkbox" type="checkbox" id="inlineCheckbox1"
                                                name="target_brand"
                                                checked={form.target_brand}
                                                onChange={$this.onValueChange}/>
                                         <span className="call_checkbox_label">Target Brand</span>
+                                    </label>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="checkbox-inline call_label_inline">
+                                        <input className="call_checkbox" type="checkbox" id="IS_TARGET_BRAND_RECALLED"
+                                               name="IS_TARGET_BRAND_RECALLED"
+                                               checked={form.IS_TARGET_BRAND_RECALLED}
+                                               onChange={$this.onValueChange}/>
+                                        <span className="call_checkbox_label">Is Recalled</span>
                                     </label>
                                 </div>
                             </div>
@@ -164,6 +164,15 @@ site.reactjs.CallSubmitForm = React.createClass({
                                     </label>
                                 </div>
 
+                                <div className="col-md-3">
+                                    <label className="checkbox-inline call_label_inline">
+                                        <input className="call_checkbox" type="checkbox" id="inlineCheckbox1"
+                                               name="dob_matched"
+                                               checked={form.dob_matched}
+                                               onChange={$this.onValueChange}/>
+                                        <span className="call_checkbox_label">DOB Matched</span>
+                                    </label>
+                                </div>
                             </div>
 
 
@@ -225,8 +234,8 @@ site.reactjs.CallSubmitForm = React.createClass({
                                         <option value="10">Others</option>
                                         <option value="11">Not Interested</option>
                                         <option value="13">Duplicate</option>
-                                        <option value="14">N/A</option>
-                                        <option value="15">N/A</option>
+                                        <option value="14">Non Smoker</option>
+                                        <option value="15">Under Age</option>
                                         <option value="18">Request No</option>
                                         <option value="19">Call Received by Others</option>
                                         <option value="20">No Answer</option>

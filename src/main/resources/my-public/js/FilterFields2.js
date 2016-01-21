@@ -36,6 +36,7 @@ site.reactjs.FilterFields2 = React.createClass({
             showTools: "",
             showVideo: "",
             packsell: "",
+            recallMode: false,
         };
     },
     componentDidMount: function () {
@@ -108,12 +109,23 @@ site.reactjs.FilterFields2 = React.createClass({
                             </div>
                         </div>
 
-                        <div className="col-md-12">
+                        <div className="col-md-8">
                             <div className="form-group">
                                 <label htmlFor="exampleInputEmail1">Work Date</label>
                                 <DatePickerPopup modalId={Math.random()} modalTitle="Select Date Range"
                                                  name="workDate" value={$this.state.workDate}
                                                  onChange={$this.onWorkDateChange}/>
+                            </div>
+                        </div>
+
+                        <div className="col-md-4">
+                            <div className="checkbox checkbox-form">
+                                <label>
+                                    <input type="checkbox" name="recallMode" value="1"
+                                           checked={!!$this.state.recallMode}
+                                           onChange={$this.onRecallModeChange}/>
+                                    Recall Mode
+                                </label>
                             </div>
                         </div>
 
@@ -199,6 +211,11 @@ site.reactjs.FilterFields2 = React.createClass({
             </div>
         );
     },
+
+    onRecallModeChange: function (e) {
+        this.setState({recallMode: !this.state.recallMode});
+    },
+
     onPtrChange: function (e) {
         this.setState({ptr: e.target.value});
     },

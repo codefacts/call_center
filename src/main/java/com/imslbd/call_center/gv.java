@@ -20,7 +20,7 @@ public class gv {
     public static final String brId = "brId";
     public static final String workDateTo = "workDateTo";
     public static final String workDateFrom = "workDateFrom";
-    public static final String recall_mode = "recall-mode";
+    public static final String recallMode = "recallMode";
     public static final String success_range = "success-range";
     public static final String ptr_range = "ptr-range";
     public static final String swp_range = "swp-range";

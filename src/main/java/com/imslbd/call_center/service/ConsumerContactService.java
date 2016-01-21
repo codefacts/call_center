@@ -121,27 +121,37 @@ public class ConsumerContactService {
     }
 
     private String queryString_2(JsonObject criteria) {
-        return "?area=" + criteria.getInteger(gv.areaId)
-            + "&distribution=" + criteria.getInteger(gv.distributionHouseId)
-            + "&br=" + criteria.getInteger(gv.brId)
+        return "?area=" + criteria.getValue(gv.areaId)
+            + "&distribution=" + criteria.getValue(gv.distributionHouseId)
+            + "&br=" + criteria.getValue(gv.brId)
             + "&startdate=" + criteria.getValue("workDate")
-            + "&ptr=" + criteria.getValue("ptr") + "&swp=&ACTIVE=1";
+            + "&ptr=" + criteria.getValue("ptr")
+            + "&swp=" + criteria.getValue("swp")
+            + "&refreshment=" + criteria.getValue("refreshment")
+            + "&giveAway=" + criteria.getValue("giveAway")
+            + "&packsell=" + criteria.getValue("packsell")
+            + "&showTools=" + criteria.getValue("showTools")
+            + "&showVideo=" + criteria.getValue("showVideo")
+            + "&showVideo=" + criteria.getValue("showVideo")
+            + "&recallMode=" + criteria.getValue("recallMode")
+            ;
     }
 
     private String queryString(JsonObject criteria) {
 
-        return "?area=" + criteria.getInteger(gv.areaId)
-            + "&distribution=" + criteria.getInteger(gv.distributionHouseId)
-            + "&br=" + criteria.getInteger(gv.brId)
+        return "?area=" + criteria.getValue(gv.areaId)
+            + "&distribution=" + criteria.getValue(gv.distributionHouseId)
+            + "&br=" + criteria.getValue(gv.brId)
             + "&report_start_date=" + ExceptionUtil.toRuntimeCall(() -> URLEncoder.encode(criteria.getString("workDateFrom", ""), StandardCharsets.UTF_8.name()))
             + "&report_end_date=" + ExceptionUtil.toRuntimeCall(() -> URLEncoder.encode(criteria.getString("workDateTo", ""), StandardCharsets.UTF_8.name()))
-            + "&ACTIVE=1&ptr_from=" + criteria.getInteger("ptrFrom")
-            + "&ptr_to=" + criteria.getInteger("ptrTo")
-            + "&success_from=" + criteria.getInteger("successFrom")
-            + "&success_to=" + criteria.getInteger("successTo")
-            + "&call_status=&recallMode=" + criteria.getBoolean("recallMode")
-            + "&page=" + criteria.getString("page")
-            + "&size=" + criteria.getString("size");
+            + "&ACTIVE=1&ptr_from=" + criteria.getValue("ptrFrom")
+            + "&ptr_to=" + criteria.getValue("ptrTo")
+            + "&success_from=" + criteria.getValue("successFrom")
+            + "&success_to=" + criteria.getValue("successTo")
+            + "&call_status="
+            + "&recallMode=" + criteria.getValue("recallMode")
+            + "&page=" + criteria.getValue("page")
+            + "&size=" + criteria.getValue("size");
     }
 
     public void contactDetails(Message<JsonObject> message) {

@@ -11,6 +11,7 @@ import io.crm.web.util.WebUtils;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -59,7 +60,7 @@ public class ConsumerContactController {
                 criteria.put(gv.workDateTo, MyUtil.formatDate(Converters.toDate(v2), null));
             });
 
-            criteria.put("recallMode", params.contains(gv.recall_mode));
+            criteria.put("recallMode", params.get(gv.recallMode));
 
             MyUtil.splitPair(params.get(gv.success_range), "-").accept((v1, v2) -> {
                 criteria.put(gv.successFrom, isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
@@ -109,7 +110,7 @@ public class ConsumerContactController {
             Promises.from()
                 .mapToPromise(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONSUMER_CONTACT_CALL_STEP_1,
                     newCriteria, new DeliveryOptions().setSendTimeout(5 * 60 * 1000)))
-                .map(m -> m.body())
+                .map(Message::body)
                 .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                 .then(js -> ctx.response().end(js.encodePrettily()))
                 .error(ctx::fail);
@@ -118,60 +119,9 @@ public class ConsumerContactController {
 
     public void consumerContactsCallStep_2(Router router) {
         router.get(MyUris.CONSUMER_CONTACTS_CALL_STEP_2.value).handler(ctx -> {
-            final JsonObject criteria = new JsonObject();
-
-            final MultiMap params = ctx.request().params();
-            criteria.put(gv.areaId, Converters.toLong(params.get(gv.areaId)));
-            criteria.put(gv.distributionHouseId, Converters.toLong(params.get(gv.distributionHouseId)));
-            criteria.put(gv.brId, Converters.toLong(params.get(gv.brId)));
-
-            criteria.put("workDate", params.get("workDate"));
-            criteria.put("recallMode", params.contains(gv.recall_mode));
-
-            MyUtil.splitPair(params.get(gv.success_range), "-").accept((v1, v2) -> {
-                criteria.put(gv.successFrom, isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put(gv.successTo, isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.ptr_range), "-").accept((v1, v2) -> {
-                criteria.put("ptrFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("ptrTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.swp_range), "-").accept((v1, v2) -> {
-                criteria.put("swpFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("swpTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.refreshment_range), "-").accept((v1, v2) -> {
-                criteria.put("refreshmentFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("refreshmentTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.give_away_range), "-").accept((v1, v2) -> {
-                criteria.put("giveAwayFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("giveAwayTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.pack_sell_range), "-").accept((v1, v2) -> {
-                criteria.put("packsellFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("packsellTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.show_tools_range), "-").accept((v1, v2) -> {
-                criteria.put("showToolsFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("showToolsTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            MyUtil.splitPair(params.get(gv.show_video_range), "-").accept((v1, v2) -> {
-                criteria.put("showVideoFrom", isEmptyOrNullOrSpaces(v1) ? null : Converters.toInt(v1));
-                criteria.put("showVideoTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
-            });
-
-            JsonObject newCriteria = new JsonObject(criteria.stream().filter(e -> e.getValue() != null).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue())));
 
             Promises.from()
-                .mapToPromise(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONSUMER_CONTACT_CALL_STEP_2, newCriteria))
+                .mapToPromise(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONSUMER_CONTACT_CALL_STEP_2, WebUtils.toJson(ctx.request().params())))
                 .map(m -> m.body())
                 .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                 .then(js -> ctx.response().end(js.encodePrettily()))

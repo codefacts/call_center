@@ -119,7 +119,8 @@ site.reactjs.FilterFields = React.createClass({
                         <div className="col-md-4">
                             <div className="checkbox checkbox-form">
                                 <label>
-                                    <input type="checkbox" name="recall-mode" checked={!!$this.state.recallMode}
+                                    <input type="checkbox" name="recallMode" value="1"
+                                           checked={!!$this.state.recallMode}
                                            onChange={$this.onRecallModeChange}/>
                                     Recall Mode
                                 </label>
@@ -335,7 +336,7 @@ site.reactjs.FilterFields = React.createClass({
             areaId: params.areaId,
             distributionHouseId: params.distributionHouseId,
             brId: params.brId,
-            recallMode: !!params["recall-mode"],
+            recallMode: !!params["recallMode"],
             workDate: {
                 from: !pair['from'] ? "" : moment(pair['from'], "DD-MMM-YYYY").format("YYYY-MM-DD"),
                 to: !pair['to'] ? "" : moment(pair['to'], "DD-MMM-YYYY").format("YYYY-MM-DD")
