@@ -45,6 +45,7 @@ final public class MainVerticle extends AbstractVerticle {
     public static final String PROP_PORT = "PORT";
     public static final String PROP_CALL_REVIEW_PORT = "CALL_REVIEW_PORT";
     public static final String PROP_CALL_REVIEW_HOST = "CALL_REVIEW_HOST";
+    private JDBCClient jdbcClient;
 
     @Override
     public void start() throws Exception {
@@ -68,7 +69,7 @@ final public class MainVerticle extends AbstractVerticle {
     }
 
     private void initialize() {
-
+        jdbcClient = JDBCClient.createShared(vertx, MyApp.loadConfig().getJsonObject("database"));
     }
 
     private void registerCodecs() {
@@ -78,6 +79,9 @@ final public class MainVerticle extends AbstractVerticle {
 
     @Override
     public void stop() throws Exception {
+        if (jdbcClient != null) {
+            jdbcClient.close();
+        }
     }
 
     private void registerEvents() {

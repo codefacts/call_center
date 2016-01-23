@@ -102,18 +102,18 @@ site.reactjs.TablePrimary = React.createClass({
                                             <td>S. Need</td>
                                             <td>Called</td>
                                             <td>Success</td>
-                                            <td>PTR</td>
-                                            <td>Called</td>
-                                            <td>Success</td>
-                                            <td>Refreshment</td>
-                                            <td>Called</td>
-                                            <td>Success</td>
-                                            <td>G.A.</td>
-                                            <td>Called</td>
-                                            <td>Success</td>
-                                            <td>P.S.</td>
-                                            <td>Called</td>
-                                            <td>Success</td>
+                                            <td className="bg-danger">PTR</td>
+                                            <td className="bg-danger">Called</td>
+                                            <td className="bg-danger">Success</td>
+                                            <td className="bg-info">Refreshment</td>
+                                            <td className="bg-info">Called</td>
+                                            <td className="bg-info">Success</td>
+                                            <td className="bg-danger">G.A.</td>
+                                            <td className="bg-danger">Called</td>
+                                            <td className="bg-danger">Success</td>
+                                            <td className="bg-info">P.S.</td>
+                                            <td className="bg-info">Called</td>
+                                            <td className="bg-info">Success</td>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -123,18 +123,18 @@ site.reactjs.TablePrimary = React.createClass({
                                             <th>{v.total.totalSuccessNeed}</th>
                                             <th>{v.total.totalCalled}</th>
                                             <th>{v.total.totalSuccess}</th>
-                                            <th>{v.total.totalPTR}</th>
-                                            <th>{v.total.totalPTRCalled}</th>
-                                            <th>{v.total.totalPTRSuccess}</th>
-                                            <th>{v.total.totalRef}</th>
-                                            <th>{v.total.totalRefCalled}</th>
-                                            <th>{v.total.totalRefSuccess}</th>
-                                            <th>{v.total.totalGA}</th>
-                                            <th>{v.total.totalGACalled}</th>
-                                            <th>{v.total.totalGASuccess}</th>
-                                            <th>{v.total.totalPackSell}</th>
-                                            <th>{v.total.totalPackSellCalled}</th>
-                                            <th>{v.total.totalPackSellSuccess}</th>
+                                            <th className="bg-danger">{v.total.totalPTR}</th>
+                                            <th className="bg-danger">{v.total.totalPTRCalled}</th>
+                                            <th className="bg-danger">{v.total.totalPTRSuccess}</th>
+                                            <th className="bg-info">{v.total.totalRef}</th>
+                                            <th className="bg-info">{v.total.totalRefCalled}</th>
+                                            <th className="bg-info">{v.total.totalRefSuccess}</th>
+                                            <th className="bg-danger">{v.total.totalGA}</th>
+                                            <th className="bg-danger">{v.total.totalGACalled}</th>
+                                            <th className="bg-danger">{v.total.totalGASuccess}</th>
+                                            <th className="bg-info">{v.total.totalPackSell}</th>
+                                            <th className="bg-info">{v.total.totalPackSellCalled}</th>
+                                            <th className="bg-info">{v.total.totalPackSellSuccess}</th>
                                         </tr>
                                         <tr>
                                             <th>Daily:</th>
@@ -142,18 +142,18 @@ site.reactjs.TablePrimary = React.createClass({
                                             <th>{v.daily.totalSuccessNeed}</th>
                                             <th>{v.daily.totalCalled}</th>
                                             <th>{v.daily.totalSuccess}</th>
-                                            <th>{v.daily.totalPTR}</th>
-                                            <th>{v.daily.totalPTRCalled}</th>
-                                            <th>{v.daily.totalPTRSuccess}</th>
-                                            <th>{v.daily.totalRef}</th>
-                                            <th>{v.daily.totalRefCalled}</th>
-                                            <th>{v.daily.totalRefSuccess}</th>
-                                            <th>{v.daily.totalGA}</th>
-                                            <th>{v.daily.totalGACalled}</th>
-                                            <th>{v.daily.totalGASuccess}</th>
-                                            <th>{v.daily.totalPackSell}</th>
-                                            <th>{v.daily.totalPackSellCalled}</th>
-                                            <th>{v.daily.totalPackSellSuccess}</th>
+                                            <th className="bg-danger">{v.total.totalPTR}</th>
+                                            <th className="bg-danger">{v.total.totalPTRCalled}</th>
+                                            <th className="bg-danger">{v.total.totalPTRSuccess}</th>
+                                            <th className="bg-info">{v.total.totalRef}</th>
+                                            <th className="bg-info">{v.total.totalRefCalled}</th>
+                                            <th className="bg-info">{v.total.totalRefSuccess}</th>
+                                            <th className="bg-danger">{v.total.totalGA}</th>
+                                            <th className="bg-danger">{v.total.totalGACalled}</th>
+                                            <th className="bg-danger">{v.total.totalGASuccess}</th>
+                                            <th className="bg-info">{v.total.totalPackSell}</th>
+                                            <th className="bg-info">{v.total.totalPackSellCalled}</th>
+                                            <th className="bg-info">{v.total.totalPackSellSuccess}</th>
                                         </tr>
                                         </tbody>
                                     </table>
