@@ -9,6 +9,8 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.nio.file.Paths;
+
 /**
  * Created by someone on 08/12/2015.
  */
@@ -23,7 +25,9 @@ public class BrService {
     }
 
     public void findAll(Message<JsonObject> message) {
-        httpClient.get(GET_BRS_URI + "?Id=" + message.body().getLong(gv.distributionHouseId), res -> {
+        String baseUrl = message.body().getString("baseUrl");
+        message.body().remove("baseUrl");
+        httpClient.getAbs(baseUrl + GET_BRS_URI + "?Id=" + message.body().getLong(gv.distributionHouseId), res -> {
             res
                 .bodyHandler(b -> {
                     try {

@@ -57,8 +57,11 @@ site.reactjs.ContactDetails = React.createClass({
 
                         <div className="row contact-details-row">
                             <div className="col-md-6">
-                                Mobile: <strong>{v.CONSUMER_MOBILE}</strong>
+                                Mobile: <strong><input style={{width: '120px', padding: '2px', margin: '0'}}
+                                                       readOnly={true} type="text"
+                                                       value={v.CONSUMER_MOBILE}/></strong>
                             </div>
+
                             <div className="col-md-6">
                                 Age: <strong>{v['s.AGE']}</strong>
                             </div>
@@ -92,10 +95,12 @@ site.reactjs.ContactDetails = React.createClass({
                                 SWP: <span className={$this.yesNo(v['SWAP'])} aria-hidden="true"></span>
                             </div>
                             <div className="col-md-3">
-                                Refreshment: <span className={$this.yesNo(v['Refreshmemt'])} aria-hidden="true"></span>
+                                Refreshment: <span className={$this.yesNo(v['Refreshmemt'])}
+                                                   aria-hidden="true"></span>
                             </div>
                             <div className="col-md-3">
-                                Give Away: <span className={$this.yesNo(v['s.GIVE_AWAY'])} aria-hidden="true"></span>
+                                Give Away: <span className={$this.yesNo(v['s.GIVE_AWAY'])}
+                                                 aria-hidden="true"></span>
                             </div>
                         </div>
                         <div className="row contact-details-row">
@@ -103,10 +108,12 @@ site.reactjs.ContactDetails = React.createClass({
                                 Pack Sell: <span className={$this.yesNo(v['PACK_SELL'])} aria-hidden="true"></span>
                             </div>
                             <div className="col-md-3">
-                                Tools Shown: <span className={$this.yesNo(v['SHOW_TOOLS'])} aria-hidden="true"></span>
+                                Tools Shown: <span className={$this.yesNo(v['SHOW_TOOLS'])}
+                                                   aria-hidden="true"></span>
                             </div>
                             <div className="col-md-3">
-                                Video Shown: <span className={$this.yesNo(v['SHOW_VIDEO'])} aria-hidden="true"></span>
+                                Video Shown: <span className={$this.yesNo(v['SHOW_VIDEO'])}
+                                                   aria-hidden="true"></span>
                             </div>
                         </div>
                     </div>

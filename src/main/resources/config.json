@@ -12,13 +12,24 @@
       "MY_PUBLIC_DIRECTORY": "/home/shahadat/IdeaProjects/call_center/src/main/resources/my-public",
       //      "CALL_REVIEW_PORT": 7005,
       //      "CALL_REVIEW_HOST": "182.160.99.116"
-      "CALL_REVIEW_PORT": 8545,
-      "CALL_REVIEW_HOST": "192.168.100.130",
+      //      "CALL_REVIEW_PORT": 8014,
+      "CALL_REVIEW_PORT": 4001,
+      "CALL_REVIEW_HOST": "182.160.99.116",
+      //      "CALL_REVIEW_PORT": 8545,
+      //      "CALL_REVIEW_HOST": "192.168.100.142",
       "database": {
         "user": "root",
         "password": "",
         "url": "jdbc:mysql://localhost:3306/call_center_db"
-      }
+      },
+      "CALL_ALLOW_HOSTS": [
+        "localhost",
+        "182.160.99.114",
+        "::1",
+        "127.0.0.1",
+        "192.168.100.203"
+      ],
+      "DEFAULT_CAMPAIGN_ID": 5
     },
     "production": {
     }

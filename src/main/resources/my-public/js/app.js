@@ -3,7 +3,8 @@ site.reactjs.App = React.createClass({
         return {
             body: "",
             bodyRef: null,
-            user: {}
+            user: {},
+            campaign: {}
         };
     },
 
@@ -11,17 +12,19 @@ site.reactjs.App = React.createClass({
         var $this = this;
         $this.router();
         $this.getUserData();
+        $this.getCampaign();
     },
 
     render: function () {
         var $this = this;
         var user = $this.state.user;
+        var campaign = $this.state.campaign;
         return (
             <div className="container-fluid">
 
                 <div className="row">
                     <div className="col-md-12">
-                        <site.reactjs.NavbarPrimary user={user}/>
+                        <site.reactjs.NavbarPrimary user={user} campaign={campaign}/>
                     </div>
                 </div>
 
@@ -54,6 +57,14 @@ site.reactjs.App = React.createClass({
                     $this.bodyRef.updateData(site.hash.getParams());
                 });
             })
+            .on('/grocery-form', function () {
+                $this.setState({
+                    body: <site.reactjs.grocery.Step1 onInit={$this.onInitBody}/>
+                }, function () {
+                    console.log("updating contacts: " + $this.bodyRef.updateData);
+                    if ($.isFunction($this.bodyRef.updateData)) $this.bodyRef.updateData(site.hash.getParams());
+                });
+            })
             .execute()
         ;
     },
@@ -69,6 +80,21 @@ site.reactjs.App = React.createClass({
                 console.log(user)
                 $this.setState({
                     user: user
+                });
+            },
+            error: function () {
+            }
+        });
+    },
+    getCampaign: function () {
+        var $this = this;
+        $.ajax({
+            url: '/current-campaign',
+            cache: false,
+            success: function (campaign) {
+
+                $this.setState({
+                    campaign: campaign
                 });
             },
             error: function () {

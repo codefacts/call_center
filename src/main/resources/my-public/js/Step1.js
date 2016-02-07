@@ -18,7 +18,7 @@ site.reactjs.Step1 = React.createClass({
                 }
             };
         };
-        console.log("INIT>>>")
+        console.log("INIT>>>");
         return {
             filterFieldsRef: null,
             primaryTableRef: null,

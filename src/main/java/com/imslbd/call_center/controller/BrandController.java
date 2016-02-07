@@ -25,7 +25,7 @@ public class BrandController {
     private void findBrand(Router router) {
         router.get(MyUris.BRANDS.value).handler(ctx -> Promises.from()
             .mapToPromise(v -> Util.<JsonArray>send(vertx.eventBus(),
-                MyEvents.FIND_BRAND, WebUtils.toJson(ctx.request().params())))
+                MyEvents.FIND_BRAND, WebUtils.toJson(ctx.request().params()).put("baseUrl", ctx.session().get("baseUrl").toString())))
             .map(m -> m.body())
             .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
             .then(js -> ctx.response().end(js.encodePrettily()))

@@ -32,4 +32,5 @@ public class gv {
     public static final String successTo = "successTo";
     public static final String successFrom = "successFrom";
     public static final String userId = "userId";
+    public static final String campaign = "campaign";
 }

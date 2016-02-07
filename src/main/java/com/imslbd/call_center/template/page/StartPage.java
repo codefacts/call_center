@@ -10,8 +10,12 @@ import java.util.List;
  * Created by shahadat on 1/17/16.
  */
 public class StartPage extends Template {
-    public StartPage(List<JsonObject> agents) {
+    public StartPage(List<JsonObject> agents, List<JsonObject> campaigns) {
         addCollection("agents", agents, (entries, arguments) -> {
+            arguments.add("id", entries.getLong("id").toString());
+            arguments.add("name", entries.getString("name"));
+        });
+        addCollection("campaigns", campaigns, (entries, arguments) -> {
             arguments.add("id", entries.getLong("id").toString());
             arguments.add("name", entries.getString("name"));
         });

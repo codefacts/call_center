@@ -10,12 +10,19 @@
 
             <div class="form-group">
 
-                <select id="agent" name="agent" class="form-control">
+                <select id="agentId" name="agentId" class="form-control">
                     <option value="">Please select your name</option>
                     ~for op in agents:
                     <option value="~op.id~">~op.name~ [#~op.id~]</option>
                     :~
                 </select>
+
+                <!--<select id="campaignId" name="campaignId" class="form-control" style="margin-top: 10px;">-->
+                    <!--<option value="">Please select campaign</option>-->
+                    <!--~for op in campaigns:-->
+                    <!--<option value="~op.id~">~op.name~ [#~op.id~]</option>-->
+                    <!--:~-->
+                <!--</select>-->
             </div>
 
         </form>
@@ -24,18 +31,46 @@
 </div>
 
 <script>
-    $('#agent').change(function (e) {
+
+    function onSuccess(data) {
         $.ajax({
             url: '/login',
             cache: false,
-            data: {id: e.target.value},
+            data: data,
             method: "post",
             success: function (js) {
-                location.href = "/dashboard";
+                if (data.campaignId == 3) {
+                    location.href = "/dashboard#/call";
+                }
+                else {
+                    location.href = "/dashboard";
+                }
             },
             error: function () {
                 alert("Error. Please notify your supervisor.");
             }
         });
+    };
+
+    //TaskCoordinator
+    var agentId = null;
+    var campaignId = 2;
+
+    function countDown() {
+        if (!!agentId && !!campaignId) {
+            onSuccess({agentId: agentId, campaignId: campaignId});
+        }
+    }
+
+    $('#agentId').change(function (e) {
+        agentId = e.target.value;
+        countDown();
     });
+
+    $('#campaignId').change(function (e) {
+        campaignId = e.target.value;
+        countDown();
+    });
+
+
 </script>

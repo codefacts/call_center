@@ -37,7 +37,7 @@ public class ConsumerContactController {
 
     private void contactDetails(Router router) {
         router.get(MyUris.CONTACT_DETAILS.value).handler(ctx -> {
-            Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONTACT_DETAILS, WebUtils.toJson(ctx.request().params()))
+            Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONTACT_DETAILS, WebUtils.toJson(ctx.request().params()).put("baseUrl", ctx.session().get("baseUrl").toString()))
                 .map(m -> m.body())
                 .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                 .then(js -> ctx.response().end(js.encodePrettily()))
@@ -102,8 +102,11 @@ public class ConsumerContactController {
                 criteria.put("showVideoTo", isEmptyOrNullOrSpaces(v2) ? null : Converters.toInt(v2));
             });
 
-            criteria.put("page", Util.getOrDefault(params.get("page"), ""))
-                .put("size", Util.getOrDefault(params.get("size"), ""));
+            criteria.put("page", Util.or(params.get("page"), ""))
+                .put("size", Util.or(params.get("size"), ""))
+                .put("baseUrl", ctx.session().get("baseUrl").toString());
+
+            criteria.put("DATASOURCE", Util.as(ctx.session().get(gv.campaign), JsonObject.class).getLong("id"));
 
             JsonObject newCriteria = new JsonObject(criteria.stream().filter(e -> e.getValue() != null).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue())));
 
@@ -113,7 +116,9 @@ public class ConsumerContactController {
                 .map(Message::body)
                 .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                 .then(js -> ctx.response().end(js.encodePrettily()))
-                .error(ctx::fail);
+                .error(ctx::fail)
+                .error(e ->
+                    System.out.println(e));
         });
     }
 
@@ -121,7 +126,7 @@ public class ConsumerContactController {
         router.get(MyUris.CONSUMER_CONTACTS_CALL_STEP_2.value).handler(ctx -> {
 
             Promises.from()
-                .mapToPromise(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONSUMER_CONTACT_CALL_STEP_2, WebUtils.toJson(ctx.request().params())))
+                .mapToPromise(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CONSUMER_CONTACT_CALL_STEP_2, WebUtils.toJson(ctx.request().params()).put("baseUrl", ctx.session().get("baseUrl").toString())))
                 .map(m -> m.body())
                 .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                 .then(js -> ctx.response().end(js.encodePrettily()))
@@ -137,7 +142,7 @@ public class ConsumerContactController {
                 entries.put("workDate.__to", s2);
             });
 
-            Util.<JsonObject>send(vertx.eventBus(), MyEvents.BR_ACTIVITY_SUMMARY, entries)
+            Util.<JsonObject>send(vertx.eventBus(), MyEvents.BR_ACTIVITY_SUMMARY, entries.put("baseUrl", ctx.session().get("baseUrl").toString()))
                 .map(m -> m.body())
                 .then(js -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                 .then(js -> ctx.response().end(js.encodePrettily()))

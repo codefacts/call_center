@@ -1,11 +1,13 @@
 site.reactjs.NavbarPrimary = React.createClass({
     getDefaultProps: function () {
         return {
-            user: {}
+            user: {},
+            campaign: {}
         };
     },
     render: function () {
         var user = this.props.user;
+        var campaign = this.props.campaign;
         return (
             <nav className="navbar navbar-default" style={{marginBottom: 0}}>
                 <div className="container-fluid">
@@ -18,7 +20,7 @@ site.reactjs.NavbarPrimary = React.createClass({
                                 className="icon-bar"></span>
                         </button>
 
-                        <a className="navbar-brand" href="#">{user.username} [#{user.userId}]</a>
+                        <a className="navbar-brand" href="#">{user.username} [#{user.userId}] | {campaign.name}</a>
                     </div>
 
                     <div className="collapse navbar-collapse" id="bs-example-navbar-collapse-1">

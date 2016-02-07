@@ -18,4 +18,7 @@ public class MyEvents {
     public static final String FIND_BRAND = "FIND_BRAND";
     public static final String CALL_CREATE = "CALL_CREATE";
     public static final String FIND_ALL_CALL_OPERATOR = "FIND_ALL_CALL_OPERATOR";
+    public static final String FIND_ALL_CAMPAIGN = "FIND_ALL_CAMPAIGN";
+    public static final String FIND_CAMPAIGN = "FIND_CAMPAIGN";
+    public static final String FIND_ALL_DATA_SOURCES = "FIND_ALL_DATA_SOURCES";
 }

@@ -29,11 +29,11 @@ public class DistributionHouseController {
             long areaId = Converters.toLong(ctx.request().getParam(gv.areaId));
             if (areaId > 0) entries.put(gv.areaId, areaId);
 
-            Util.<JsonObject>send(vertx.eventBus(), MyEvents.FIND_ALL_DISTRIBUTION_HOUSES, entries)
-                    .map(m -> m.body())
-                    .then(v -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
-                    .then(js -> ctx.response().end(js.encodePrettily()))
-                    .error(ctx::fail)
+            Util.<JsonObject>send(vertx.eventBus(), MyEvents.FIND_ALL_DISTRIBUTION_HOUSES, entries.put("baseUrl", ctx.session().get("baseUrl").toString()))
+                .map(m -> m.body())
+                .then(v -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
+                .then(js -> ctx.response().end(js.encodePrettily()))
+                .error(ctx::fail)
             ;
         });
     }

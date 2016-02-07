@@ -112,6 +112,13 @@ final public class MainVerticle extends AbstractVerticle {
         eventBus.consumer(MyEvents.FIND_BRAND, consumerContactService::findBrand);
         eventBus.consumer(MyEvents.CALL_CREATE, consumerContactService::createCall);
         eventBus.consumer(MyEvents.FIND_ALL_CALL_OPERATOR, consumerContactService::findAllCallOperator);
+
+        CampaignService campaignService = new CampaignService(jdbcClient);
+        eventBus.consumer(MyEvents.FIND_ALL_CAMPAIGN, campaignService::findAllCampaign);
+        eventBus.consumer(MyEvents.FIND_CAMPAIGN, campaignService::findCampaign);
+
+        DbService dbService = new DbService(jdbcClient);
+        eventBus.consumer(MyEvents.FIND_ALL_DATA_SOURCES, dbService::findAllDataSources);
     }
 
     private void devLogin(EventBus eventBus) {
@@ -216,6 +223,10 @@ final public class MainVerticle extends AbstractVerticle {
         new CallOperator(vertx, router);
 
         new BrandController(vertx, router);
+
+        new CampaignController(vertx, router);
+
+        new DBController(vertx, router);
     }
 
     private void otherwiseController(final Router router) {

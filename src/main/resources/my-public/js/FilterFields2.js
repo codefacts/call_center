@@ -101,7 +101,8 @@ site.reactjs.FilterFields2 = React.createClass({
                                     {
                                         $this.state.brs.map(function (area) {
                                             return (
-                                                <option value={area.id} key={Math.random()}>{area.name}</option>
+                                                <option value={area.id} key={Math.random()}>{area.name}
+                                                    [{area.id}]</option>
                                             );
                                         })
                                     }

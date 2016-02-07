@@ -1,6 +1,7 @@
 package com.imslbd.call_center.template.page;
 
 import com.imslbd.call_center.util.MyUtil;
+import io.crm.util.Util;
 import io.crm.web.util.Script;
 import org.watertemplate.Template;
 import org.watertemplate.TemplateMap;
@@ -8,7 +9,6 @@ import org.watertemplate.TemplateMap;
 import java.util.Collection;
 import java.util.List;
 
-import static io.crm.util.Util.getOrDefault;
 import static io.crm.web.template.TemplateUtil.EMPTY_TEMPLATE;
 
 /**
@@ -32,7 +32,7 @@ final public class PageTmpt extends Template {
 
     @Override
     protected void addSubTemplates(TemplateMap.SubTemplates subTemplates) {
-        subTemplates.add("body", getOrDefault(body, EMPTY_TEMPLATE));
+        subTemplates.add("body", Util.or(body, EMPTY_TEMPLATE));
     }
 
     @Override

@@ -1,9 +1,9 @@
 package com.imslbd.call_center.template.page;
 
+import io.crm.util.Util;
 import io.vertx.core.json.JsonObject;
 import org.watertemplate.Template;
 
-import static io.crm.util.Util.getOrDefault;
 import static io.crm.web.template.TemplateUtil.EMPTY_TEMPLATE;
 
 public class DashboardTmptBuilder {
@@ -27,6 +27,6 @@ public class DashboardTmptBuilder {
     }
 
     public DashboardTmpt build() {
-        return new DashboardTmpt(user, getOrDefault(sidebarTemplate, EMPTY_TEMPLATE), getOrDefault(contentTemplate, EMPTY_TEMPLATE));
+        return new DashboardTmpt(user, Util.or(sidebarTemplate, EMPTY_TEMPLATE), Util.or(contentTemplate, EMPTY_TEMPLATE));
     }
 }

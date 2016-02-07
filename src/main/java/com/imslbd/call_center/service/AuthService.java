@@ -9,6 +9,8 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
 
+import java.nio.file.Paths;
+
 /**
  * Created by shahadat on 1/17/16.
  */
@@ -23,7 +25,9 @@ public class AuthService {
     public void login(Message<JsonObject> message) {
         Promises.from(message.body()).then(entries -> {
             String encode = entries.encode();
-            httpClient.post(LOGIN_URL,
+            String baseUrl = entries.getString("baseUrl");
+            entries.remove("baseUrl");
+            httpClient.postAbs(baseUrl + LOGIN_URL.toString(),
                 res -> res.bodyHandler(b -> {
                     try {
                         message.reply(new JsonObject(b.toString()));

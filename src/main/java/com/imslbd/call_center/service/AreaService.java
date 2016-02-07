@@ -8,6 +8,8 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.nio.file.Paths;
+
 /**
  * Created by someone on 08/12/2015.
  */
@@ -23,7 +25,9 @@ public class AreaService {
 
     public void findAll(Message<JsonObject> message) {
         try {
-            httpClient.get(GET_AREAS_URI, res -> {
+            String baseUrl = message.body().getString("baseUrl");
+            message.body().remove("baseUrl");
+            httpClient.getAbs(baseUrl + GET_AREAS_URI.toString(), res -> {
                 res
                     .bodyHandler(b -> {
                         try {

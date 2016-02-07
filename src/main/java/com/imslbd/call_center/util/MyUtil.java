@@ -12,7 +12,6 @@ import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
 import io.crm.util.touple.immutable.Tpl2;
 import io.crm.util.touple.immutable.Tpls;
-import io.vertx.core.MultiMap;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -24,8 +23,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-
-import static io.crm.util.Util.getOrDefault;
 
 /**
  * Created by someone on 12/11/2015.
@@ -55,18 +52,18 @@ public class MyUtil {
     public static final String EXCEL_DATE_FORMAT_PATTERN = "\\d{1,2}/\\d{1,2}/\\d{4} \\d{1,2}:\\d{1,2}";
 
     public static PageTmptBuilder dashboardPage(
-            final String title,
-            final JsonObject currentUser,
-            final String uri,
-            final Template body) {
+        final String title,
+        final JsonObject currentUser,
+        final String uri,
+        final Template body) {
         return new PageTmptBuilder(title)
-                .body(
-                        new DashboardTmptBuilder()
-                                .setUser(currentUser)
-                                .setSidebarTemplate(new Sidebar(uri))
-                                .setContentTemplate(body)
-                                .build()
-                );
+            .body(
+                new DashboardTmptBuilder()
+                    .setUser(currentUser)
+                    .setSidebarTemplate(new Sidebar(uri))
+                    .setContentTemplate(body)
+                    .build()
+            );
     }
 
     public static String templatePath(final String path) {
@@ -80,7 +77,7 @@ public class MyUtil {
     }
 
     public static final Date parseDate(String val) {
-        final String string = getOrDefault(val, "").trim();
+        final String string = Util.or(val, "").trim();
         if (string.matches(GLOBAL_DATE_FORMAT_PATTERN)) {
             return ExceptionUtil.toRuntimeCall(() -> DATE_FORMAT_THREAD_LOCAL.get().parse(string));
         } else {
@@ -105,8 +102,12 @@ public class MyUtil {
     }
 
     public static Tpl2<String, String> splitPair(String valuePair, String regex) {
-        final String aDefault = Util.getOrDefault(valuePair, "");
+        final String aDefault = Util.or(valuePair, "");
         final String[] split = aDefault.split(regex, 2);
         return Tpls.of(split[0], split.length > 1 ? split[1] : "");
+    }
+
+    public static String mobiBaseUrl(String host, int port) {
+        return "http://" + host + ":" + port;
     }
 }

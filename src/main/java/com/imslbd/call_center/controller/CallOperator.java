@@ -20,6 +20,7 @@ public class CallOperator {
         this.vertx = vertx;
         callOperator(router);
         currentUser(router);
+        currentCampaign(router);
     }
 
     private void callOperator(Router router) {
@@ -27,7 +28,7 @@ public class CallOperator {
             .mapToPromise(v -> Util.<JsonObject>send(vertx.eventBus(),
                 MyEvents.FIND_CALL_OPERATOR, new JsonObject()
                     .put("id", ((JsonObject) ctx.session().get(gv.currentUser))
-                        .getValue(gv.userId))))
+                        .getValue(gv.userId)).put("baseUrl", ctx.session().get("baseUrl").toString())))
             .map(m -> m.body())
             .then(j -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
             .then(js -> ctx.response().end(js.encodePrettily()))
@@ -38,6 +39,13 @@ public class CallOperator {
         router.get(MyUris.CURRENT_USER.value).handler(ctx -> {
             ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON);
             ctx.response().end(((JsonObject) ctx.session().get(gv.currentUser)).encodePrettily());
+        });
+    }
+
+    private void currentCampaign(Router router) {
+        router.get(MyUris.CURRENT_CAMPAIGN.value).handler(ctx -> {
+            ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON);
+            ctx.response().end(((JsonObject) ctx.session().get(gv.campaign)).encodePrettily());
         });
     }
 }

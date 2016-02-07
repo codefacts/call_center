@@ -18,6 +18,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,41 +37,54 @@ public class ConsumerContactService {
 
     public void consumerContactsCallStep_1(Message<JsonObject> message) {
         Promises.from(message.body())
-            .then(criteria -> httpClient.get(CALL_SEARCH_LOAD_DATA_URI + queryString(criteria),
-                res -> res.bodyHandler(b -> {
-                    try {
-                        message.reply(new JsonObject(b.toString()));
-                    } catch (Exception ex) {
-                        ExceptionUtil.fail(message, ex);
-                    }
-                })
-                    .exceptionHandler(e -> ExceptionUtil.fail(message, e)))
-                .sendHead()
-                .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
+            .then(criteria -> {
+                String baseUrl = criteria.getString("baseUrl");
+                criteria.remove("baseUrl");
+                httpClient
+                    .getAbs(baseUrl + CALL_SEARCH_LOAD_DATA_URI + queryString(criteria),
+                        res -> res
+                            .bodyHandler(b -> {
+                                try {
+                                    message.reply(new JsonObject(b.toString()));
+                                } catch (Exception ex) {
+                                    ExceptionUtil.fail(message, ex);
+                                }
+                            })
+                            .exceptionHandler(e ->
+                                ExceptionUtil.fail(message, e)))
+                    .sendHead()
+                    .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
 //                .putHeader("Host", MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
 //                .putHeader("Referer", "http://" + MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
-                .exceptionHandler(e -> ExceptionUtil.fail(message, e))
-                .end())
-            .error(e -> ExceptionUtil.fail(message, e));
+                    .exceptionHandler(e ->
+                        ExceptionUtil.fail(message, e))
+                    .end();
+            })
+            .error(e ->
+                ExceptionUtil.fail(message, e));
     }
 
     public void consumerContactsCallStep_2(Message<JsonObject> message) {
         Promises.from(message.body())
-            .then(criteria -> httpClient.get(CALL_SEARCH_STEP_2_URI + queryString_2(criteria),
-                res -> res.bodyHandler(b -> {
-                    try {
-                        message.reply(new JsonObject(b.toString()));
-                    } catch (Exception ex) {
-                        ExceptionUtil.fail(message, ex);
-                    }
-                })
-                    .exceptionHandler(e -> ExceptionUtil.fail(message, e)))
-                .sendHead()
-                .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
+            .then(criteria -> {
+                String baseUrl = criteria.getString("baseUrl");
+                criteria.remove("baseUrl");
+                httpClient.getAbs(baseUrl + CALL_SEARCH_STEP_2_URI + queryString_2(criteria),
+                    res -> res.bodyHandler(b -> {
+                        try {
+                            message.reply(new JsonObject(b.toString()));
+                        } catch (Exception ex) {
+                            ExceptionUtil.fail(message, ex);
+                        }
+                    })
+                        .exceptionHandler(e -> ExceptionUtil.fail(message, e)))
+                    .sendHead()
+                    .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
 //                .putHeader("Host", MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
 //                .putHeader("Referer", "http://" + MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
-                .exceptionHandler(e -> ExceptionUtil.fail(message, e))
-                .end())
+                    .exceptionHandler(e -> ExceptionUtil.fail(message, e))
+                    .end();
+            })
             .error(e -> ExceptionUtil.fail(message, e));
     }
 
@@ -81,8 +95,9 @@ public class ConsumerContactService {
             final Defer<JsonObject> defer2 = Promises.defer();
 
             final JsonObject entries = message.body();
-
-            httpClient.get("/Call/brReportDaily?br=" + entries.getValue("brId") + "&date=" + entries.getValue("workDate"),
+            String baseUrl = entries.getString("baseUrl");
+            entries.remove("baseUrl");
+            httpClient.getAbs(baseUrl + "/Call/brReportDaily" + "?br=" + entries.getValue("brId") + "&date=" + entries.getValue("workDate"),
                 res -> res.bodyHandler(b -> {
                     try {
                         defer1.complete(new JsonObject(b.toString()));
@@ -97,7 +112,7 @@ public class ConsumerContactService {
                 .exceptionHandler(defer1::fail)
                 .end();
 
-            httpClient.get("/Call/brReportTotal?br=" + entries.getValue("brId") + "&from=" + entries.getValue("workDate.__from") + "&to=" + entries.getValue("workDate.__to"),
+            httpClient.getAbs(baseUrl + "/Call/brReportTotal" + "?br=" + entries.getValue("brId") + "&from=" + entries.getValue("workDate.__from") + "&to=" + entries.getValue("workDate.__to"),
                 res -> res.bodyHandler(b -> {
                     try {
                         defer2.complete(new JsonObject(b.toString()));
@@ -151,12 +166,15 @@ public class ConsumerContactService {
             + "&call_status="
             + "&recallMode=" + criteria.getValue("recallMode")
             + "&page=" + criteria.getValue("page")
-            + "&size=" + criteria.getValue("size");
+            + "&size=" + criteria.getValue("size")
+            + "&DATASOURCE=" + criteria.getValue("DATASOURCE");
     }
 
     public void contactDetails(Message<JsonObject> message) {
         Promises.from(message.body()).then(entries -> {
-            httpClient.get("/Call/contactDetails?sms_id=" + entries.getValue("sms_id"),
+            String baseUrl = entries.getString("baseUrl");
+            entries.remove("baseUrl");
+            httpClient.getAbs(baseUrl + "/Call/contactDetails" + "?sms_id=" + entries.getValue("sms_id"),
                 res -> res.bodyHandler(b -> {
                     try {
                         message.reply(new JsonObject(b.toString()));
@@ -175,7 +193,7 @@ public class ConsumerContactService {
 
     public void findCallOperator(Message<JsonObject> message) {
         Promises.from(message.body()).then(entries -> {
-            httpClient.get("/Call/callOperator?id=" + entries.getValue("id"),
+            httpClient.get("/Call/callOperator" + "?id=" + entries.getValue("id"),
                 res -> res.bodyHandler(b -> {
                     try {
                         message.reply(new JsonObject(b.toString()));
@@ -193,26 +211,32 @@ public class ConsumerContactService {
     }
 
     public void findBrand(Message<JsonObject> message) {
-        Promises.from(message.body()).then(entries -> httpClient.get("/Call/brands?id=" + entries.getValue("id"),
-            res -> res.bodyHandler(b -> {
-                try {
-                    message.reply(new JsonArray(b.toString()));
-                } catch (Exception ex) {
-                    ExceptionUtil.fail(message, ex);
-                }
-            }).exceptionHandler(e -> ExceptionUtil.fail(message, e)))
-            .sendHead()
-            .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
+        Promises.from(message.body()).then(entries -> {
+            String baseUrl = entries.getString("baseUrl");
+            entries.remove("baseUrl");
+            httpClient.getAbs(baseUrl + "/Call/brands" + "?id=" + entries.getValue("id"),
+                res -> res.bodyHandler(b -> {
+                    try {
+                        message.reply(new JsonArray(b.toString()));
+                    } catch (Exception ex) {
+                        ExceptionUtil.fail(message, ex);
+                    }
+                }).exceptionHandler(e -> ExceptionUtil.fail(message, e)))
+                .sendHead()
+                .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
 //                .putHeader("Host", MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
 //                .putHeader("Referer", "http://" + MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
-            .exceptionHandler(e -> ExceptionUtil.fail(message, e))
-            .end()).error(e -> ExceptionUtil.fail(message, e));
+                .exceptionHandler(e -> ExceptionUtil.fail(message, e))
+                .end();
+        }).error(e -> ExceptionUtil.fail(message, e));
     }
 
     public void createCall(Message<JsonObject> message) {
         Promises.from(message.body()).then(entries -> {
             String encode = entries.encode();
-            httpClient.post("/Call/createCall",
+            String baseUrl = entries.getString("baseUrl");
+            entries.remove("baseUrl");
+            httpClient.postAbs(baseUrl + "/Call/createCall",
                 res -> res.bodyHandler(b -> {
                     try {
                         message.reply(new JsonObject(b.toString()));

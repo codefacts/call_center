@@ -39,23 +39,21 @@ site.reactjs.TablePrimary = React.createClass({
                  style={{border: '1px solid #ddd', height: $this.state.bodyHeight + 'px'}}>
 
                 <table className="table table-bordered table-hover table-condensed MainTable"
-                       style={{marginTop: '37px', height: $this.tableHeight($this.state.bodyHeight) + 'px', overflow: 'auto',
-                       display:'block', border: 0, borderTop: '1px solid #ddd'}}>
+                       style={{border: 0, borderTop: '1px solid #ddd'}}>
 
-                    <thead style={{display: 'block', position: 'absolute', top: '0', left: '16px'}}>
+                    <thead>
                     <tr>
-                        <th style={{width: '82px', borderBottom: 0}}>BR ID</th>
-                        <th style={{width: '125px', borderBottom: 0}}>BR Name</th>
-                        <th style={{width: '62px', borderBottom: 0}}>Active</th>
-                        <th style={{width: '92px', borderBottom: 0}}>Work Date</th>
-                        <th style={{width: '72px', borderBottom: 0}}>Contact</th>
-                        <th style={{width: '72px', borderBottom: 0}}>PTR</th>
-                        <th style={{width: '72px', borderBottom: 0}}>REF.</th>
-                        <th style={{width: '72px', borderBottom: 0}}>G.A.</th>
-                        <th style={{width: '100px', borderBottom: 0}}>Pack Sell</th>
-                        <th style={{width: '72px', borderBottom: 0}}>CALL</th>
-                        <th style={{width: '72px', borderBottom: 0}}>SUCCESS</th>
-                        <th style={{width: '200px', borderRight: 0, borderBottom: 0}}></th>
+                        <th className="bg-primary" style={{width: '82px', borderBottom: 0}}>BR ID</th>
+                        <th className="bg-primary" style={{width: '125px', borderBottom: 0}}>BR Name</th>
+                        <th className="bg-success" style={{width: '92px', borderBottom: 0}}>Work Date</th>
+                        <th className="bg-success" style={{width: '72px', borderBottom: 0}}>Contact</th>
+                        <th className="bg-danger" style={{width: '72px', borderBottom: 0}}>PTR</th>
+                        <!--        <th className="bg-danger" style={{width: '72px', borderBottom: 0}}>REF.</th>
+                                <th className="bg-info" style={{width: '72px', borderBottom: 0}}>G.A.</th>
+                                <th className="bg-info" style={{width: '100px', borderBottom: 0}}>Pack Sell</th>    -->
+                        <th className="bg-warning" style={{width: '72px', borderBottom: 0}}>CALL</th>
+                        <th className="bg-warning" style={{width: '72px', borderBottom: 0}}>SUCCESS</th>
+                        <th className="bg-warning" style={{width: '200px', borderRight: 0, borderBottom: 0}}></th>
                     </tr>
                     </thead>
                     <tbody className="MainTableBody">
@@ -105,15 +103,15 @@ site.reactjs.TablePrimary = React.createClass({
                                             <td className="bg-danger">PTR</td>
                                             <td className="bg-danger">Called</td>
                                             <td className="bg-danger">Success</td>
-                                            <td className="bg-info">Refreshment</td>
-                                            <td className="bg-info">Called</td>
-                                            <td className="bg-info">Success</td>
-                                            <td className="bg-danger">G.A.</td>
-                                            <td className="bg-danger">Called</td>
-                                            <td className="bg-danger">Success</td>
-                                            <td className="bg-info">P.S.</td>
-                                            <td className="bg-info">Called</td>
-                                            <td className="bg-info">Success</td>
+                                            <!--                                            <td className="bg-info">Refreshment</td>
+                                                                                        <td className="bg-info">Called</td>
+                                                                                        <td className="bg-info">Success</td>
+                                                                                        <td className="bg-danger">G.A.</td>
+                                                                                        <td className="bg-danger">Called</td>
+                                                                                        <td className="bg-danger">Success</td>
+                                                                                        <td className="bg-info">P.S.</td>
+                                                                                        <td className="bg-info">Called</td>
+                                                                                        <td className="bg-info">Success</td>    -->
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -126,15 +124,15 @@ site.reactjs.TablePrimary = React.createClass({
                                             <th className="bg-danger">{v.total.totalPTR}</th>
                                             <th className="bg-danger">{v.total.totalPTRCalled}</th>
                                             <th className="bg-danger">{v.total.totalPTRSuccess}</th>
-                                            <th className="bg-info">{v.total.totalRef}</th>
-                                            <th className="bg-info">{v.total.totalRefCalled}</th>
-                                            <th className="bg-info">{v.total.totalRefSuccess}</th>
-                                            <th className="bg-danger">{v.total.totalGA}</th>
-                                            <th className="bg-danger">{v.total.totalGACalled}</th>
-                                            <th className="bg-danger">{v.total.totalGASuccess}</th>
-                                            <th className="bg-info">{v.total.totalPackSell}</th>
-                                            <th className="bg-info">{v.total.totalPackSellCalled}</th>
-                                            <th className="bg-info">{v.total.totalPackSellSuccess}</th>
+                                            <!--                                            <th className="bg-info">{v.total.totalRef}</th>
+                                                                                        <th className="bg-info">{v.total.totalRefCalled}</th>
+                                                                                        <th className="bg-info">{v.total.totalRefSuccess}</th>
+                                                                                        <th className="bg-danger">{v.total.totalGA}</th>
+                                                                                        <th className="bg-danger">{v.total.totalGACalled}</th>
+                                                                                        <th className="bg-danger">{v.total.totalGASuccess}</th>
+                                                                                        <th className="bg-info">{v.total.totalPackSell}</th>
+                                                                                        <th className="bg-info">{v.total.totalPackSellCalled}</th>
+                                                                                        <th className="bg-info">{v.total.totalPackSellSuccess}</th>     -->
                                         </tr>
                                         <tr>
                                             <th>Daily:</th>
@@ -145,15 +143,15 @@ site.reactjs.TablePrimary = React.createClass({
                                             <th className="bg-danger">{v.total.totalPTR}</th>
                                             <th className="bg-danger">{v.total.totalPTRCalled}</th>
                                             <th className="bg-danger">{v.total.totalPTRSuccess}</th>
-                                            <th className="bg-info">{v.total.totalRef}</th>
-                                            <th className="bg-info">{v.total.totalRefCalled}</th>
-                                            <th className="bg-info">{v.total.totalRefSuccess}</th>
-                                            <th className="bg-danger">{v.total.totalGA}</th>
-                                            <th className="bg-danger">{v.total.totalGACalled}</th>
-                                            <th className="bg-danger">{v.total.totalGASuccess}</th>
-                                            <th className="bg-info">{v.total.totalPackSell}</th>
-                                            <th className="bg-info">{v.total.totalPackSellCalled}</th>
-                                            <th className="bg-info">{v.total.totalPackSellSuccess}</th>
+                                            <!--                                            <th className="bg-info">{v.total.totalRef}</th>
+                                                                                        <th className="bg-info">{v.total.totalRefCalled}</th>
+                                                                                        <th className="bg-info">{v.total.totalRefSuccess}</th>
+                                                                                        <th className="bg-danger">{v.total.totalGA}</th>
+                                                                                        <th className="bg-danger">{v.total.totalGACalled}</th>
+                                                                                        <th className="bg-danger">{v.total.totalGASuccess}</th>
+                                                                                        <th className="bg-info">{v.total.totalPackSell}</th>
+                                                                                        <th className="bg-info">{v.total.totalPackSellCalled}</th>
+                                                                                        <th className="bg-info">{v.total.totalPackSellSuccess}</th>     -->
                                         </tr>
                                         </tbody>
                                     </table>
@@ -174,31 +172,29 @@ site.reactjs.TablePrimary = React.createClass({
         return (
             <tr key={$this.genKey(v)}
                 className={classes}>
-                <td style={{width: '82px'}}
+                <td className="bg-primary" style={{width: '82px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.br_id}</td>
-                <td style={{width: '125px'}}
+                <td className="bg-primary" style={{width: '125px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.br}</td>
-                <td style={{width: '62px'}}
-                    onClick={function () {$this.toggleView(v.index)}}>{!!v.active ? 'Yes' : 'No'}</td>
-                <td style={{width: '92px'}}
+                <td className="bg-success" style={{width: '92px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.date}</td>
 
-                <td style={{width: '72px'}}
+                <td className="bg-success" style={{width: '72px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.contacts}</td>
-                <td style={{width: '72px'}}
+                <td className="bg-danger" style={{width: '72px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.ptrs}</td>
-                <td style={{width: '72px'}}
-                    onClick={function () {$this.toggleView(v.index)}}>{v.refreshment_count}</td>
-                <td style={{width: '72px'}}
-                    onClick={function () {$this.toggleView(v.index)}}>{v.give_away_count}</td>
-                <td style={{width: '100px'}}
-                    onClick={function () {$this.toggleView(v.index)}}>{v.packsell_count}</td>
+                <!--                <td className="bg-danger" style={{width: '72px'}}
+                                    onClick={function () {$this.toggleView(v.index)}}>{v.refreshment_count}</td>
+                                <td className="bg-info" style={{width: '72px'}}
+                                    onClick={function () {$this.toggleView(v.index)}}>{v.give_away_count}</td>
+                                <td className="bg-info" style={{width: '100px'}}
+                                    onClick={function () {$this.toggleView(v.index)}}>{v.packsell_count}</td>   -->
 
-                <td style={{width: '72px'}}
+                <td className="bg-warning" style={{width: '72px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.calls}</td>
-                <td style={{width: '72px'}}
+                <td className="bg-warning" style={{width: '72px'}}
                     onClick={function () {$this.toggleView(v.index)}}>{v.success}</td>
-                <td style={{width: '200px', borderRight: 0}}>
+                <td className="bg-warning" style={{width: '200px', borderRight: 0}}>
                     <span className="btn btn-sm btn-primary btn-block"
                           onClick={function () {$this.gotoStep2(v)}}>Details</span>
                 </td>
@@ -217,7 +213,7 @@ site.reactjs.TablePrimary = React.createClass({
         params["workDate"] = v.date;
         params['distributionHouseId'] = v.house_id;
         params['areaId'] = v.area_id;
-        
+
         site.hash.goto('/work-day-details', params);
     },
     toggleView: function (index) {

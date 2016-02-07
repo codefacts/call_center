@@ -12,6 +12,7 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -29,7 +30,9 @@ public class DistributionHouseService {
     }
 
     public void findAll(Message<JsonObject> message) {
-        httpClient.get(GET_DISTRIBUTION_HOUSES_URI + "?Id=" + message.body().getLong("areaId"), res -> {
+        String baseUrl = message.body().getString("baseUrl");
+        message.body().remove("baseUrl");
+        httpClient.getAbs(baseUrl + GET_DISTRIBUTION_HOUSES_URI + "?Id=" + message.body().getLong("areaId"), res -> {
             res
                 .bodyHandler(b -> {
                     try {

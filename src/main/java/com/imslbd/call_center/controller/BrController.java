@@ -28,7 +28,7 @@ public class BrController {
             long distributionHouseId = Converters.toLong(ctx.request().getParam("distributionHouseId"));
             if (distributionHouseId > 0) entries.put(gv.distributionHouseId, distributionHouseId);
 
-            Util.<JsonObject>send(vertx.eventBus(), MyEvents.FIND_ALL_BRS, entries)
+            Util.<JsonObject>send(vertx.eventBus(), MyEvents.FIND_ALL_BRS, entries.put("baseUrl", ctx.session().get("baseUrl").toString()))
                     .map(m -> m.body())
                     .then(v -> ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON))
                     .then(js -> ctx.response().end(js.encodePrettily()))
