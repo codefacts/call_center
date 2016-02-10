@@ -26,12 +26,4 @@ public class DashboardController {
             );
         });
     }
-
-    public static void main(String... args) {
-        System.out.println(
-                new PageTmptBuilder("Call Center")
-                        .body(new SiteTmpt())
-                        .build().render()
-        );
-    }
 }

@@ -70,13 +70,15 @@ site.reactjs.FilterFields2 = React.createClass({
                                     {
                                         $this.state.areas.map(function (area) {
                                             return (
-                                                <option value={area.id} key={Math.random()}>{area.name}</option>
+                                                <option value={area.id} key={Math.random()}>{area.name}
+                                                </option>
                                             );
                                         })
                                     }
                                 </select>
                             </div>
                         </div>
+
                         <div className="col-md-12">
                             <div className="form-group">
                                 <select className="form-control" value={$this.state.distributionHouseId}

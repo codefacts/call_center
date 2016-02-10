@@ -21,4 +21,8 @@ public class MyEvents {
     public static final String FIND_ALL_CAMPAIGN = "FIND_ALL_CAMPAIGN";
     public static final String FIND_CAMPAIGN = "FIND_CAMPAIGN";
     public static final String FIND_ALL_DATA_SOURCES = "FIND_ALL_DATA_SOURCES";
+    public static final String LOCK_CONTACT_ID = "LOCK_CONTACT_ID";
+    public static final String UN_LOCK_CONTACT_ID = "UN_LOCK_CONTACT_ID";
+    public static final String ALREADY_LOCKED = "ALREADY_LOCKED";
+    public static final String CONTACT_UPDATED = "CONTACT_UPDATED";
 }

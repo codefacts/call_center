@@ -4,13 +4,11 @@ import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
 import io.crm.QC;
 import io.crm.model.User;
-import io.crm.promise.Promises;
 import io.crm.web.ApiEvents;
 import io.crm.web.App;
 import io.crm.web.Uris;
 import io.crm.web.codec.ListToListCodec;
 import io.crm.web.codec.RspListToRspListCodec;
-import io.crm.web.controller.AuthController;
 import io.crm.web.controller.GoogleMapController;
 import io.crm.web.template.PageBuilder;
 import io.crm.web.template.page.LoginTemplate;
@@ -29,6 +27,9 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.CookieHandler;
 import io.vertx.ext.web.handler.SessionHandler;
 import io.crm.web.statichandler.StaticHandler;
+import io.vertx.ext.web.handler.sockjs.BridgeOptions;
+import io.vertx.ext.web.handler.sockjs.PermittedOptions;
+import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.sstore.LocalSessionStore;
 import io.vertx.ext.web.sstore.SessionStore;
 
@@ -55,6 +56,10 @@ final public class MainVerticle extends AbstractVerticle {
 
         //Configure Router
         final Router router = Router.router(vertx);
+
+        router.route("/eventbus/*").handler(SockJSHandler.create(vertx)
+            .bridge(bridgeOptions()));
+
         router.route().handler(CookieHandler.create());
         SessionStore store = LocalSessionStore.create(vertx);
         SessionHandler sessionHandler = SessionHandler.create(store);
@@ -66,6 +71,24 @@ final public class MainVerticle extends AbstractVerticle {
         getVertx().createHttpServer().requestHandler(router::accept).listen(MyApp.loadConfig().getInteger(PROP_PORT));
         System.out.println("<----------------------------------WEB_SERVER_STARTED------------------------------------->");
         System.out.println("PORT: " + MyApp.loadConfig().getInteger(PROP_PORT));
+    }
+
+    private BridgeOptions bridgeOptions() {
+        BridgeOptions bridgeOptions = new BridgeOptions();
+
+        bridgeOptions
+            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.LOCK_CONTACT_ID))
+            .addOutboundPermitted(new PermittedOptions().setAddress(MyEvents.LOCK_CONTACT_ID))
+            .addOutboundPermitted(new PermittedOptions().setAddress(MyEvents.ALREADY_LOCKED))
+            .addOutboundPermitted(new PermittedOptions().setAddress(MyEvents.CONTACT_UPDATED));
+
+        bridgeOptions
+            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.UN_LOCK_CONTACT_ID))
+            .addOutboundPermitted(new PermittedOptions().setAddress(MyEvents.UN_LOCK_CONTACT_ID))
+            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.ALREADY_LOCKED))
+            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.CONTACT_UPDATED));
+
+        return bridgeOptions;
     }
 
     private void initialize() {
@@ -103,7 +126,7 @@ final public class MainVerticle extends AbstractVerticle {
         final BrService brService = new BrService(vertx, httpClient);
         eventBus.consumer(MyEvents.FIND_ALL_BRS, brService::findAll);
 
-        final ConsumerContactService consumerContactService = new ConsumerContactService(httpClient);
+        final ConsumerContactService consumerContactService = new ConsumerContactService(httpClient, vertx);
         eventBus.consumer(MyEvents.CONSUMER_CONTACT_CALL_STEP_1, consumerContactService::consumerContactsCallStep_1);
         eventBus.consumer(MyEvents.CONSUMER_CONTACT_CALL_STEP_2, consumerContactService::consumerContactsCallStep_2);
         eventBus.consumer(MyEvents.BR_ACTIVITY_SUMMARY, consumerContactService::brActivitySummary);
@@ -112,6 +135,8 @@ final public class MainVerticle extends AbstractVerticle {
         eventBus.consumer(MyEvents.FIND_BRAND, consumerContactService::findBrand);
         eventBus.consumer(MyEvents.CALL_CREATE, consumerContactService::createCall);
         eventBus.consumer(MyEvents.FIND_ALL_CALL_OPERATOR, consumerContactService::findAllCallOperator);
+        eventBus.consumer(MyEvents.LOCK_CONTACT_ID, consumerContactService::lockContactId);
+        eventBus.consumer(MyEvents.UN_LOCK_CONTACT_ID, consumerContactService::unLockContactId);
 
         CampaignService campaignService = new CampaignService(jdbcClient);
         eventBus.consumer(MyEvents.FIND_ALL_CAMPAIGN, campaignService::findAllCampaign);

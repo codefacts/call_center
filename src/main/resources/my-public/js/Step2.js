@@ -2,7 +2,8 @@ site.reactjs.Step2 = React.createClass({
     getDefaultProps: function () {
         return {
             onInit: function () {
-            }
+            },
+            user: {}
         }
     },
     getInitialState: function () {
@@ -24,7 +25,7 @@ site.reactjs.Step2 = React.createClass({
             filterFieldsRef: null,
             primaryTableRef: null,
             filterFields: <site.reactjs.FilterFields2 formId="filter-form" scope={filterFieldsScope()}
-                                                     onFilterFiledsInit={$this.onFilterFiledsInit}/>,
+                                                      onFilterFiledsInit={$this.onFilterFiledsInit}/>,
             ViewFilter: 1
         };
     },
@@ -35,12 +36,13 @@ site.reactjs.Step2 = React.createClass({
     },
     render: function () {
         var $this = this;
+        var user = $this.props.user;
         return (
             <div className="row">
 
                 <div id="container" className="col-md-12">
 
-                    <site.reactjs.WorkDayDetailsTable onInit={$this.onPrimaryTableInit}/>
+                    <site.reactjs.WorkDayDetailsTable user={user} onInit={$this.onPrimaryTableInit}/>
 
                 </div>
 

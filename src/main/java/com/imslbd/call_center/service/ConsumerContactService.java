@@ -1,27 +1,24 @@
 package com.imslbd.call_center.service;
 
-import com.google.common.collect.ImmutableList;
-import com.imslbd.call_center.MainVerticle;
 import com.imslbd.call_center.MyApp;
+import com.imslbd.call_center.MyEvents;
 import com.imslbd.call_center.gv;
 import io.crm.promise.Promises;
 import io.crm.promise.intfs.Defer;
-import io.crm.promise.intfs.Promise;
 import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
+import io.crm.web.util.Converters;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.shareddata.LocalMap;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Created by someone on 13/12/2015.
@@ -29,10 +26,17 @@ import java.util.stream.Collectors;
 public class ConsumerContactService {
     public static final String CALL_SEARCH_LOAD_DATA_URI = "/Call/SearchLoadData";
     public static final String CALL_SEARCH_STEP_2_URI = "/Call/searchResult";
+    private static final String LOCKED_SMS_IDS = "LOCKED_SMS_IDS";
+    private static final String SMS_ID = "SMS_ID";
+    private static final String DEFAULT_SMS_ID_LOCK_TIME_OUT = "DEFAULT_SMS_ID_LOCK_TIME_OUT";
+    private static final String LOCK_CANCELER_TIMER = "LOCK_CANCELER_TIMER";
+    private static final String CALL_OPERATOR = "CALL_OPERATOR";
     private final HttpClient httpClient;
+    private final Vertx vertx;
 
-    public ConsumerContactService(HttpClient httpClient) {
+    public ConsumerContactService(HttpClient httpClient, Vertx vertx) {
         this.httpClient = httpClient;
+        this.vertx = vertx;
     }
 
     public void consumerContactsCallStep_1(Message<JsonObject> message) {
@@ -72,7 +76,22 @@ public class ConsumerContactService {
                 httpClient.getAbs(baseUrl + CALL_SEARCH_STEP_2_URI + queryString_2(criteria),
                     res -> res.bodyHandler(b -> {
                         try {
-                            message.reply(new JsonObject(b.toString()));
+                            message.reply(Util.accept(new JsonObject(b.toString()),
+                                js -> {
+                                    if (!js.getString("status").equals("success")) {
+                                        return;
+                                    }
+                                    js.getJsonArray("data").stream()
+                                        .map(o -> Util.as(o, Map.class))
+                                        .forEach(m -> {
+                                            JsonObject jsa = new JsonObject(m);
+                                            Object operator = vertx.sharedData().getLocalMap(LOCKED_SMS_IDS)
+                                                .get(jsa.getLong("SMS_ID", 0L));
+                                            if (operator != null) {
+                                                jsa.put("LOCKED_BY", operator);
+                                            }
+                                        });
+                                }));
                         } catch (Exception ex) {
                             ExceptionUtil.fail(message, ex);
                         }
@@ -239,6 +258,7 @@ public class ConsumerContactService {
             httpClient.postAbs(baseUrl + "/Call/createCall",
                 res -> res.bodyHandler(b -> {
                     try {
+                        vertx.eventBus().publish(MyEvents.CONTACT_UPDATED, entries);
                         message.reply(new JsonObject(b.toString()));
                     } catch (Exception ex) {
                         ExceptionUtil.fail(message, ex);
@@ -273,5 +293,71 @@ public class ConsumerContactService {
                 .exceptionHandler(e -> ExceptionUtil.fail(message, e))
                 .end();
         }).error(e -> ExceptionUtil.fail(message, e));
+    }
+
+    public void lockContactId(Message<JsonObject> message) {
+        JsonObject jo = message.body();
+        System.out.println("LOCK: " + jo.encode());
+
+        final Long sms_id = jo.getLong(SMS_ID);
+        final Long call_operator = jo.getLong(CALL_OPERATOR);
+
+        LocalMap<Object, Object> localMap = vertx.sharedData().getLocalMap(LOCKED_SMS_IDS);
+
+        Object callOpOld = localMap.get(sms_id);
+
+        if (callOpOld != null) {
+            vertx.eventBus().publish(MyEvents.ALREADY_LOCKED,
+                new JsonObject()
+                    .put("SMS_ID", sms_id)
+                    .put("LOCKED_BY", callOpOld));
+            System.out.println("ALREADY_LOCKED: " + sms_id + " By " + callOpOld);
+            return;
+        }
+
+        localMap.keySet().stream()
+            .filter(k -> localMap.get(k).equals(call_operator))
+            .forEach(k -> {
+                vertx.eventBus().publish(MyEvents.UN_LOCK_CONTACT_ID,
+                    new JsonObject()
+                        .put(SMS_ID, k)
+                        .put(CALL_OPERATOR, call_operator));
+            });
+
+        System.out.println("LOCKING: " + sms_id + " By " + call_operator);
+        localMap.putIfAbsent(sms_id, call_operator);
+
+
+        long timer = vertx.setTimer(MyApp.loadConfig().getInteger(DEFAULT_SMS_ID_LOCK_TIME_OUT) * 60 * 1000,
+            e -> {
+
+                localMap.remove(sms_id);
+
+                vertx.eventBus().publish(MyEvents.UN_LOCK_CONTACT_ID,
+                    new JsonObject().put(SMS_ID, sms_id).put(CALL_OPERATOR, call_operator));
+
+                System.out.println("LOCK TIMED OUT: " + sms_id);
+
+            });
+
+        vertx.sharedData().getLocalMap(LOCK_CANCELER_TIMER).put(sms_id, timer);
+    }
+
+    public void unLockContactId(Message<JsonObject> message) {
+
+        final Long sms_id = message.body().getLong(SMS_ID);
+        final Long operator = message.body().getLong(CALL_OPERATOR);
+
+        LocalMap<Object, Object> localMap = vertx.sharedData().getLocalMap(LOCKED_SMS_IDS);
+        boolean present = localMap.removeIfPresent(sms_id, operator);
+
+        if (!present) {
+            System.out.println("Not Present: " + sms_id + " BY " + operator + " Original By " + localMap.get(sms_id));
+            return;
+        }
+
+        vertx.cancelTimer((Long) vertx.sharedData().getLocalMap(LOCK_CANCELER_TIMER).get(sms_id));
+
+        System.out.println("UNLOCKED: " + sms_id);
     }
 }

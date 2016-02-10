@@ -24,9 +24,15 @@
     <link rel="stylesheet" href="/static/css/index.css"/>
 
     ~for href in styles:
-    <link rel="stylesheet" href="~href~">
+    <link rel="stylesheet" href="~href~"/>
     :~
 
+    <!--SockJS-->
+    <script src="/static/js/sockjs.min.js"></script>
+    <!--Vertx EventBus-->
+    <script src="/static/js/vertx-eventbus.js"></script>
+
+    <script src="/static/js/register-eventbus.js"></script>
 
     <!--JQuery-->
     <script src="/static/js/jquery-2.1.4.min.js"></script>
@@ -109,5 +115,6 @@
 ~for s in scripts:
 <script src="~s.src~" type="~s.type~"></script>
 :~
+
 </body>
 </html>

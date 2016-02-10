@@ -29,7 +29,7 @@
         "127.0.0.1",
         "192.168.100.203"
       ],
-      "DEFAULT_CAMPAIGN_ID": 5
+      "DEFAULT_SMS_ID_LOCK_TIME_OUT": 10
     },
     "production": {
     }
