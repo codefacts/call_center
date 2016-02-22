@@ -96,7 +96,7 @@ site.reactjs.Step1 = React.createClass({
                     pagination: {page: js.pagination.page, size: js.pagination.size, total: js.pagination.total}
                 });
                 $this.state.primaryTableRef.updateData(data);
-            },
+            }
         });
     },
     onPageRequest: function (page, size) {

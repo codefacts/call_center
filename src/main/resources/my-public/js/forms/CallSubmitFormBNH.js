@@ -237,6 +237,7 @@ site.reactjs.CallSubmitFormBNH = React.createClass({
                             <option value="1">Light</option>
                             <option value="2">Strong</option>
                             <option value="3">Taste Change</option>
+                            <option value="4">Negative Feedback</option>
                         </select>
                     </div>
                 </div>

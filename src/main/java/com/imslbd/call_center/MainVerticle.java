@@ -86,7 +86,8 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.UN_LOCK_CONTACT_ID))
             .addOutboundPermitted(new PermittedOptions().setAddress(MyEvents.UN_LOCK_CONTACT_ID))
             .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.ALREADY_LOCKED))
-            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.CONTACT_UPDATED));
+            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.CONTACT_UPDATED))
+            .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.FIND_ALL_CALL_OPERATOR));
 
         return bridgeOptions;
     }

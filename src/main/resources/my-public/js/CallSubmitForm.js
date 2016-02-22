@@ -10,7 +10,8 @@ site.reactjs.CallSubmitForm = React.createClass({
         var $this = this;
         return {
             CALL_ID: $this.props.data['CALL_ID'],
-            form: {}
+            form: {},
+            submitBtnDisabled: false
         };
     },
     componentDidMount: function () {
@@ -118,6 +119,7 @@ site.reactjs.CallSubmitForm = React.createClass({
                                 </div>
                                 <div className="col-md-4">
                                     <input className="btn btn-primary btn-block" type="submit"
+                                           disabled={!!$this.state.submitBtnDisabled}
                                            value="Submit"/>
                                 </div>
                             </div>
@@ -164,6 +166,10 @@ site.reactjs.CallSubmitForm = React.createClass({
         var $this = this;
         e.preventDefault();
 
+        $this.setState({
+            submitBtnDisabled: true
+        });
+
         if (!$this.state.form.call_status) {
             alert("Please select call status");
             return;
@@ -197,6 +203,11 @@ site.reactjs.CallSubmitForm = React.createClass({
             },
             error: function (e) {
                 alert("Failed. There is error in the server. Try again.");
+            },
+            complete: function () {
+                $this.setState({
+                    submitBtnDisabled: false
+                });
             }
         });
     }

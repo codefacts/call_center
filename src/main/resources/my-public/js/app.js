@@ -13,6 +13,18 @@ site.reactjs.App = React.createClass({
         $this.router();
         $this.getUserData();
         $this.getCampaign();
+
+        eb.send('FIND_ALL_CALL_OPERATOR', {}, {}, function (err, msg) {
+            if (!!err) {
+                alert("Error in server. Please reload the page.");
+                return;
+            }
+            msg.body = msg.body || [];
+            window.site.CALL_OPERATORS = msg.body.reduce(function (map, op) {
+                map[op.CALL_OPERATOR_ID] = op;
+                return map;
+            }, {});
+        });
     },
 
     render: function () {

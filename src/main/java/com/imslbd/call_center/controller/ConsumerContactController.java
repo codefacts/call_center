@@ -8,6 +8,7 @@ import io.crm.promise.Promises;
 import io.crm.util.Util;
 import io.crm.web.util.Converters;
 import io.crm.web.util.WebUtils;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -54,6 +55,15 @@ public class ConsumerContactController {
             criteria.put(gv.areaId, Converters.toLong(params.get(gv.areaId)));
             criteria.put(gv.distributionHouseId, Converters.toLong(params.get(gv.distributionHouseId)));
             criteria.put(gv.brId, Converters.toLong(params.get(gv.brId)));
+
+            if (!(criteria.getLong(gv.areaId, 0L) > 0 && criteria.getLong(gv.distributionHouseId, 0L) > 0)) {
+                ctx.response().setStatusCode(HttpResponseStatus.BAD_REQUEST.code()).end(
+                    new JsonObject()
+                        .put("status", "error")
+                        .put("message", "Please select Area And Distributin House to load data.").encodePrettily()
+                );
+                return;
+            }
 
             MyUtil.splitPair(params.get("work-date-range"), ":").accept((v1, v2) -> {
                 criteria.put(gv.workDateFrom, MyUtil.formatDate(Converters.toDate(v1), null));

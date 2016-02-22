@@ -63,8 +63,12 @@ site.reactjs.WorkDayDetailsTable = React.createClass({
                     </thead>
                     <tbody className="MainTableBody">
                     {(function () {
+
                         return (
                             data.map(function (v) {
+
+                                var call_op_locked_by = (site.CALL_OPERATORS[v.LOCKED_BY] || {});
+
                                 return (
                                     <tr key={v.index}>
                                         <td className="bg-primary"
@@ -84,6 +88,7 @@ site.reactjs.WorkDayDetailsTable = React.createClass({
                                         <th style={{borderBottom: 0}}>
                                             <button className="btn btn-sm btn-primary btn-block"
                                                     disabled={!!v.LOCKED_BY}
+                                                    title={call_op_locked_by.CALL_OPERATOR_NAME + ' [#' + call_op_locked_by.CALL_OPERATOR_ID + ']'}
                                                     onClick={function () {$this.gotoCallForm(v.SMS_ID)}}>
                                                 {!!v.LOCKED_BY ? 'Calling' : 'Call'}
                                             </button>

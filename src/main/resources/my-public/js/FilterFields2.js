@@ -122,13 +122,14 @@ site.reactjs.FilterFields2 = React.createClass({
                         </div>
 
                         <div className="col-md-4">
-                            <div className="checkbox checkbox-form">
-                                <label>
-                                    <input type="checkbox" name="recallMode" value="1"
-                                           checked={!!$this.state.recallMode}
-                                           onChange={$this.onRecallModeChange}/>
-                                    Recall Mode
-                                </label>
+                            <div className="form-group">
+                                <label htmlFor="recallMode">Show only</label>
+                                <select className="form-control" name="recallMode" value={$this.state.recallMode}
+                                        onChange={$this.onRecallModeChange}>
+                                    <option value="">Called/Not Called</option>
+                                    <option value="1">Called</option>
+                                    <option value="0">Not Called</option>
+                                </select>
                             </div>
                         </div>
 
@@ -216,7 +217,7 @@ site.reactjs.FilterFields2 = React.createClass({
     },
 
     onRecallModeChange: function (e) {
-        this.setState({recallMode: !this.state.recallMode});
+        this.setState({recallMode: e.target.value});
     },
 
     onPtrChange: function (e) {

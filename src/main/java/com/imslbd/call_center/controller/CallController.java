@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 public class CallController {
     private final Vertx vertx;
     private static final Set<String> ALLOW_HOSTS = MyApp.loadConfig().getJsonArray("CALL_ALLOW_HOSTS").stream().map(Object::toString).collect(Collectors.toSet());
+    private static final Set<String> ALLOW_MASKS = MyApp.loadConfig().getJsonArray("CALL_ALLOW_MASKS").stream().map(Object::toString).collect(Collectors.toSet());
 
     public CallController(final Vertx vertx, final Router router) {
         this.vertx = vertx;
@@ -52,7 +53,8 @@ public class CallController {
     }
 
     private void start(Router router) {
-        router.get(Uris.LOGIN.value).handler(ctx -> Promises.from()
+        router.get(Uris.LOGIN.value).handler(ctx ->
+            Promises.from()
             .mapToPromise(value -> Util.<JsonArray>send(vertx.eventBus(), MyEvents.FIND_ALL_CALL_OPERATOR, null))
             .map(Message::body)
             .mapToPromise(jsonArray -> Util.<JsonArray>send(vertx.eventBus(), MyEvents.FIND_ALL_CAMPAIGN, null)
@@ -177,7 +179,9 @@ public class CallController {
     private void create(final Router router) {
         router.post(MyUris.CALL_CREATE.value).handler(BodyHandler.create());
         router.post(MyUris.CALL_CREATE.value).handler(ctx -> Promises.from()
-            .decide(v -> !ALLOW_HOSTS.contains(ctx.request().remoteAddress().host()) ? "DENY" : Decision.OTHERWISE)
+            .decide(v -> !(ALLOW_HOSTS.contains(ctx.request().remoteAddress().host())
+                || ALLOW_MASKS.stream().filter(m -> ctx.request().remoteAddress()
+                .host().startsWith(m)).findAny().isPresent()) ? "DENY" : Decision.OTHERWISE)
             .on("DENY", v -> {
                 ctx.response().setStatusCode(HttpResponseStatus.UNAUTHORIZED.code());
                 ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON);

@@ -26,6 +26,8 @@ public class MyApp {
     private static final String PROFILES = "PROFILES";
 
     static {
+        //Setting Vertx Logger
+        System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory");
         if (loadConfig().getBoolean("dev-mode")) {
             System.setProperty("dev-mode", "true");
         }
@@ -43,8 +45,8 @@ public class MyApp {
                     config = new JsonObject(IOUtils.toString(inputStream));
                 }
                 return config
-                        .getJsonObject(PROFILES, new JsonObject())
-                        .getJsonObject(config.getString(CURRENT_PROFILE), new JsonObject());
+                    .getJsonObject(PROFILES, new JsonObject())
+                    .getJsonObject(config.getString(CURRENT_PROFILE), new JsonObject());
             } else return config;
         } catch (IOException e) {
             throw new RuntimeException(e);

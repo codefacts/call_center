@@ -15,6 +15,7 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.shareddata.LocalMap;
+import org.slf4j.LoggerFactory;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -277,22 +278,25 @@ public class ConsumerContactService {
     }
 
     public void findAllCallOperator(Message<JsonObject> message) {
-        Promises.from(message.body()).then(entries -> {
-            httpClient.get("/Call/callOperatorList",
-                res -> res.bodyHandler(b -> {
-                    try {
-                        message.reply(new JsonArray(b.toString()));
-                    } catch (Exception ex) {
-                        ExceptionUtil.fail(message, ex);
-                    }
-                }).exceptionHandler(e -> ExceptionUtil.fail(message, e)))
-                .sendHead()
-                .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
+        Promises.from(message.body())
+            .then(entries -> {
+                System.out.println("GET: //");
+                httpClient.get("/Call/callOperatorList",
+                    res -> res.bodyHandler(b -> {
+                        try {
+                            message.reply(new JsonArray(b.toString()));
+                        } catch (Exception ex) {
+                            ExceptionUtil.fail(message, ex);
+                        }
+                    }).exceptionHandler(e -> ExceptionUtil.fail(message, e)))
+                    .sendHead()
+                    .putHeader(gv.X_Requested_With, Services.CALL_CENTER_JAVA)
 //                .putHeader("Host", MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
 //                .putHeader("Referer", "http://" + MyApp.loadConfig().getString(MainVerticle.PROP_CALL_REVIEW_HOST) + ":" + MyApp.loadConfig().getInteger(MainVerticle.PROP_CALL_REVIEW_PORT))
-                .exceptionHandler(e -> ExceptionUtil.fail(message, e))
-                .end();
-        }).error(e -> ExceptionUtil.fail(message, e));
+                    .exceptionHandler(e -> ExceptionUtil.fail(message, e))
+                    .end();
+            })
+            .error(e -> ExceptionUtil.fail(message, e));
     }
 
     public void lockContactId(Message<JsonObject> message) {

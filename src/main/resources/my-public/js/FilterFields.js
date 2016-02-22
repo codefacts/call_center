@@ -18,7 +18,7 @@ site.reactjs.FilterFields = React.createClass({
             areaId: "",
             distributionHouseId: "",
             brId: "",
-            recallMode: false,
+            recallMode: "",
             workDate: {from: "", to: ""},
             success: {from: "", to: ""},
             ptr: {from: "", to: ""},
@@ -120,13 +120,14 @@ site.reactjs.FilterFields = React.createClass({
                         </div>
 
                         <div className="col-md-4">
-                            <div className="checkbox checkbox-form">
-                                <label>
-                                    <input type="checkbox" name="recallMode" value="1"
-                                           checked={!!$this.state.recallMode}
-                                           onChange={$this.onRecallModeChange}/>
-                                    Recall Mode
-                                </label>
+                            <div className="form-group">
+                                <label htmlFor="recallMode">Show only</label>
+                                <select className="form-control" name="recallMode" value={$this.state.recallMode}
+                                        onChange={$this.onRecallModeChange}>
+                                    <option value="">Called/Not Called</option>
+                                    <option value="1">Called</option>
+                                    <option value="0">Not Called</option>
+                                </select>
                             </div>
                         </div>
 
@@ -231,8 +232,7 @@ site.reactjs.FilterFields = React.createClass({
     },
 
     onRecallModeChange: function (e) {
-        console.log(e.target.value);
-        this.setState({recallMode: !this.state.recallMode});
+        this.setState({recallMode: e.target.value});
     },
     onWorkDateChange: function (pair) {
         this.setState({workDate: {from: pair.from, to: pair.to}});
@@ -339,7 +339,7 @@ site.reactjs.FilterFields = React.createClass({
             areaId: params.areaId,
             distributionHouseId: params.distributionHouseId,
             brId: params.brId,
-            recallMode: !!params["recallMode"],
+            recallMode: params["recallMode"],
             workDate: {
                 from: !pair['from'] ? "" : moment(pair['from'], "DD-MMM-YYYY").format("YYYY-MM-DD"),
                 to: !pair['to'] ? "" : moment(pair['to'], "DD-MMM-YYYY").format("YYYY-MM-DD")
