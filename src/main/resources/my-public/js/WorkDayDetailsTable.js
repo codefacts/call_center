@@ -56,6 +56,11 @@ site.reactjs.WorkDayDetailsTable = React.createClass({
                         <th className="bg-primary" style={{borderBottom: 0}}>Mobile</th>
                         <th className="bg-success" style={{borderBottom: 0}}>Age</th>
                         <th className="bg-danger" style={{borderBottom: 0}}>PTR</th>
+
+                        <th className="bg-danger" style={{borderBottom: 0}}>SWP</th>
+                        <th className="bg-info" style={{borderBottom: 0}}>REF.</th>
+                        <th className="bg-info" style={{borderBottom: 0}}>G.A.</th>
+
                         <th className="bg-warning" style={{borderBottom: 0}}>Call Status</th>
                         <th className="bg-warning" style={{borderBottom: 0}}>M.C. Status</th>
                         <th className="bg-warning" style={{borderBottom: 0}}></th>
@@ -81,6 +86,14 @@ site.reactjs.WorkDayDetailsTable = React.createClass({
                                             style={{borderBottom: 0}}>{v['s.AGE']}</td>
                                         <td className="bg-danger"
                                             style={{borderBottom: 0}}>{!!v['s.PTR'] ? 'Yes' : 'No'}</td>
+
+                                        <td className="bg-danger"
+                                            style={{borderBottom: 0}}>{!!v['SWAP'] ? 'Yes' : 'No'}</td>
+                                        <td className="bg-info"
+                                            style={{borderBottom: 0}}>{!!v.Refreshmemt ? 'Yes' : 'No'}</td>
+                                        <td className="bg-info"
+                                            style={{borderBottom: 0}}>{!!v['s.GIVE_AWAY'] ? 'Yes' : 'No'}</td>
+
                                         <td className="bg-warning"
                                             style={{borderRight: 0, borderBottom: 0}}>{v.CALL_STATUS_NAME}</td>
                                         <td className="bg-success"

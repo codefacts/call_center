@@ -58,22 +58,8 @@ site.reactjs.CallSubmitForm = React.createClass({
                         <input type="hidden" name="agent_id" value={callOperator.CALL_OPERATOR_ID}/>
                         <input type="hidden" name="house_id" value={data['h.DISTRIBUTION_HOUSE_ID']}/>
 
-                        <site.reactjs.CallSubmitFormBNH data={data} form={form} brands={brands}
+                        <site.reactjs.DerbyForm data={data} form={form} brands={brands}
                                                         onValueChange={$this.onValueChange}/>
-
-                        <div className="well well-sm">
-                            <div className="row contact-details-row">
-                                <div className="col-md-3">
-                                    <label className="checkbox-inline call_label_inline">
-                                        <input className="call_checkbox" type="checkbox" id="inlineCheckbox1"
-                                               name="ptr"
-                                               checked={form.ptr}
-                                               onChange={$this.onValueChange}/>
-                                        <span className="call_checkbox_label">PTR</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
 
                         <div className="well well-sm">
                             <div className="row contact-details-row">

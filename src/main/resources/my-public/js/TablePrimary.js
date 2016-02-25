@@ -49,6 +49,9 @@ site.reactjs.TablePrimary = React.createClass({
                         <th className="bg-success">Work Date</th>
                         <th className="bg-success">Contact</th>
                         <th className="bg-danger">PTR</th>
+                        <th className="bg-danger">REF.</th>
+                        <th className="bg-info">G.A.</th>
+                        <th className="bg-info">Pack Sell</th>
                         <th className="bg-warning">CALL</th>
                         <th className="bg-warning">SUCCESS</th>
                         <th className="bg-warning"></th>
@@ -101,6 +104,17 @@ site.reactjs.TablePrimary = React.createClass({
                                             <td className="bg-danger">PTR</td>
                                             <td className="bg-danger">Called</td>
                                             <td className="bg-danger">Success</td>
+
+                                            <td className="bg-info">Refreshment</td>
+                                            <td className="bg-info">Called</td>
+                                            <td className="bg-info">Success</td>
+                                            <td className="bg-danger">G.A.</td>
+                                            <td className="bg-danger">Called</td>
+                                            <td className="bg-danger">Success</td>
+                                            <td className="bg-info">P.S.</td>
+                                            <td className="bg-info">Called</td>
+                                            <td className="bg-info">Success</td>
+
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -113,6 +127,17 @@ site.reactjs.TablePrimary = React.createClass({
                                             <th className="bg-danger">{v.total.totalPTR}</th>
                                             <th className="bg-danger">{v.total.totalPTRCalled}</th>
                                             <th className="bg-danger">{v.total.totalPTRSuccess}</th>
+
+                                            <th className="bg-info">{v.total.totalRef}</th>
+                                            <th className="bg-info">{v.total.totalRefCalled}</th>
+                                            <th className="bg-info">{v.total.totalRefSuccess}</th>
+                                            <th className="bg-danger">{v.total.totalGA}</th>
+                                            <th className="bg-danger">{v.total.totalGACalled}</th>
+                                            <th className="bg-danger">{v.total.totalGASuccess}</th>
+                                            <th className="bg-info">{v.total.totalPackSell}</th>
+                                            <th className="bg-info">{v.total.totalPackSellCalled}</th>
+                                            <th className="bg-info">{v.total.totalPackSellSuccess}</th>
+
                                         </tr>
                                         <tr>
                                             <th>Daily:</th>
@@ -123,6 +148,16 @@ site.reactjs.TablePrimary = React.createClass({
                                             <th className="bg-danger">{v.total.totalPTR}</th>
                                             <th className="bg-danger">{v.total.totalPTRCalled}</th>
                                             <th className="bg-danger">{v.total.totalPTRSuccess}</th>
+
+                                            <th className="bg-info">{v.total.totalRef}</th>
+                                            <th className="bg-info">{v.total.totalRefCalled}</th>
+                                            <th className="bg-info">{v.total.totalRefSuccess}</th>
+                                            <th className="bg-danger">{v.total.totalGA}</th>
+                                            <th className="bg-danger">{v.total.totalGACalled}</th>
+                                            <th className="bg-danger">{v.total.totalGASuccess}</th>
+                                            <th className="bg-info">{v.total.totalPackSell}</th>
+                                            <th className="bg-info">{v.total.totalPackSellCalled}</th>
+                                            <th className="bg-info">{v.total.totalPackSellSuccess}</th>
                                         </tr>
                                         </tbody>
                                     </table>
@@ -156,6 +191,13 @@ site.reactjs.TablePrimary = React.createClass({
                     onClick={function () {$this.toggleView(v.index)}}>{v.contacts}</td>
                 <td className="bg-danger"
                     onClick={function () {$this.toggleView(v.index)}}>{v.ptrs}</td>
+
+                <td className="bg-danger"
+                    onClick={function () {$this.toggleView(v.index)}}>{v.refreshment_count}</td>
+                <td className="bg-info"
+                    onClick={function () {$this.toggleView(v.index)}}>{v.give_away_count}</td>
+                <td className="bg-info"
+                    onClick={function () {$this.toggleView(v.index)}}>{v.packsell_count}</td>
 
                 <td className="bg-warning"
                     onClick={function () {$this.toggleView(v.index)}}>{v.calls}</td>
