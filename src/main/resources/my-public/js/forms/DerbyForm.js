@@ -86,13 +86,20 @@ site.reactjs.DerbyForm = React.createClass({
                         </label>
                     </div>
                     <div className="col-md-3">
-                        <label className="checkbox-inline call_label_inline">
-                            <input className="call_checkbox" type="checkbox" id="inlineCheckbox1"
-                                   name="ptr"
-                                   checked={form.ptr}
-                                   onChange={onValueChange}/>
-                            <span className="call_checkbox_label">PTR</span>
-                        </label>
+
+                        <select className="form-control call-control"
+                                name="ptr"
+                                value={form.ptr}
+                                onChange={onValueChange}>
+                            <option value={''}>PTR</option>
+                            {
+                                [{key: 1, value: 'Yes'}, {key: 0, value: 'No'}].map(function (obj) {
+                                    return (<option key={obj.key}
+                                                    value={obj.key}>{obj.value}</option>);
+                                })
+                            }
+                        </select>
+
                     </div>
                     <div className="col-md-3">
                         <label className="checkbox-inline call_label_inline">
