@@ -25,4 +25,5 @@ public class MyEvents {
     public static final String UN_LOCK_CONTACT_ID = "UN_LOCK_CONTACT_ID";
     public static final String ALREADY_LOCKED = "ALREADY_LOCKED";
     public static final String CONTACT_UPDATED = "CONTACT_UPDATED";
+    public static final String BR_INFO = "BR_INFO";
 }

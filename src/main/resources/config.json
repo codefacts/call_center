@@ -12,9 +12,12 @@
       "MY_PUBLIC_DIRECTORY": "/home/shahadat/IdeaProjects/call_center/src/main/resources/my-public",
       //      "CALL_REVIEW_PORT": 7005,
       //      "CALL_REVIEW_HOST": "182.160.99.116"
-//                  "CALL_REVIEW_PORT": 8014,
-      "CALL_REVIEW_PORT": 4001,
+      //                  "CALL_REVIEW_PORT": 8014,
+      //      "CALL_REVIEW_PORT": 4001,
+      "CALL_REVIEW_PORT": 8013,
       "CALL_REVIEW_HOST": "182.160.99.116",
+      //      "CALL_REVIEW_PORT": 6060,
+      //      "CALL_REVIEW_HOST": "192.168.56.2",
       //      "CALL_REVIEW_PORT": 8545,
       //      "CALL_REVIEW_HOST": "192.168.100.142",
       "database": {
@@ -31,6 +34,7 @@
       "CALL_ALLOW_MASKS": [
         "192.168.100"
       ],
+      "DATASOURCE": 0,
       "DEFAULT_SMS_ID_LOCK_TIME_OUT": 10
     },
     "production": {

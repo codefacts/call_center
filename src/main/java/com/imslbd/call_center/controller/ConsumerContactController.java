@@ -116,8 +116,6 @@ public class ConsumerContactController {
                 .put("size", Util.or(params.get("size"), ""))
                 .put("baseUrl", ctx.session().get("baseUrl").toString());
 
-            criteria.put("DATASOURCE", Util.as(ctx.session().get(gv.campaign), JsonObject.class).getLong("id"));
-
             JsonObject newCriteria = new JsonObject(criteria.stream().filter(e -> e.getValue() != null).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue())));
 
             Promises.from()

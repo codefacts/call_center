@@ -41,7 +41,7 @@ site.reactjs.Step1 = React.createClass({
 
                 <div id="container" className="col-md-12">
 
-                    <site.reactjs.TablePrimary onInit={$this.onPrimaryTableInit}/>
+                    <site.reactjs.DERBY_JAN_2016.TablePrimary onInit={$this.onPrimaryTableInit}/>
 
                     <Pagination page={pagination.page} size={pagination.size} total={pagination.total}
                                 onPageRequest={$this.onPageRequest} navLength={20}/>

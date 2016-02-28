@@ -126,6 +126,7 @@ final public class MainVerticle extends AbstractVerticle {
         eventBus.consumer(MyEvents.FIND_ALL_DISTRIBUTION_HOUSES, distributionHouseService::findAll);
         final BrService brService = new BrService(vertx, httpClient);
         eventBus.consumer(MyEvents.FIND_ALL_BRS, brService::findAll);
+        eventBus.consumer(MyEvents.BR_INFO, brService::findBrInfo);
 
         final ConsumerContactService consumerContactService = new ConsumerContactService(httpClient, vertx);
         eventBus.consumer(MyEvents.CONSUMER_CONTACT_CALL_STEP_1, consumerContactService::consumerContactsCallStep_1);

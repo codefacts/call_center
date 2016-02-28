@@ -1,5 +1,5 @@
 window.site = {
-    reactjs: {grocery: {}},
+    reactjs: {grocery: {}, DERBY_JAN_2016: {}},
     hash: HashParams(),
     CALL_STATUSES: [{
         "CALL_STATUS_ID": 1,

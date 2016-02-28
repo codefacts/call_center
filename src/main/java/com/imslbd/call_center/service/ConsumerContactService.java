@@ -3,6 +3,7 @@ package com.imslbd.call_center.service;
 import com.imslbd.call_center.MyApp;
 import com.imslbd.call_center.MyEvents;
 import com.imslbd.call_center.gv;
+import io.crm.FailureCode;
 import io.crm.promise.Promises;
 import io.crm.promise.intfs.Defer;
 import io.crm.util.ExceptionUtil;
@@ -42,6 +43,7 @@ public class ConsumerContactService {
 
     public void consumerContactsCallStep_1(Message<JsonObject> message) {
         Promises.from(message.body())
+            .then(js -> js.put("DATASOURCE", MyApp.loadConfig().getLong("DATASOURCE")))
             .then(criteria -> {
                 String baseUrl = criteria.getString("baseUrl");
                 criteria.remove("baseUrl");
@@ -110,7 +112,14 @@ public class ConsumerContactService {
 
 
     public void brActivitySummary(Message<JsonObject> message) {
+
         try {
+
+            if (message.body() == null || message.body().getValue("brId") == null) {
+                message.fail(FailureCode.BadRequest.code, "BR ID is required.");
+                return;
+            }
+
             final Defer<JsonObject> defer1 = Promises.defer();
             final Defer<JsonObject> defer2 = Promises.defer();
 

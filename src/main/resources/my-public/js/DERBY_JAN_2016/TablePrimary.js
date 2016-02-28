@@ -1,4 +1,4 @@
-site.reactjs.TablePrimary = React.createClass({
+site.reactjs.DERBY_JAN_2016.TablePrimary = React.createClass({
 
     getDefaultProps: function () {
         return {
@@ -49,6 +49,9 @@ site.reactjs.TablePrimary = React.createClass({
                         <th className="bg-success">Work Date</th>
                         <th className="bg-success">Contact</th>
                         <th className="bg-danger">PTR</th>
+                        <th className="bg-danger">REF.</th>
+                        <th className="bg-info">G.A.</th>
+                        <th className="bg-info">Pack Sell</th>
                         <th className="bg-warning">CALL</th>
                         <th className="bg-warning">SUCCESS</th>
                         <th className="bg-warning"></th>
@@ -111,6 +114,13 @@ site.reactjs.TablePrimary = React.createClass({
                     onClick={function () {$this.toggleView(v.index)}}>{v.contacts}</td>
                 <td className="bg-danger"
                     onClick={function () {$this.toggleView(v.index)}}>{v.ptrs}</td>
+
+                <td className="bg-danger"
+                    onClick={function () {$this.toggleView(v.index)}}>{v.refreshment_count}</td>
+                <td className="bg-info"
+                    onClick={function () {$this.toggleView(v.index)}}>{v.give_away_count}</td>
+                <td className="bg-info"
+                    onClick={function () {$this.toggleView(v.index)}}>{v.packsell_count}</td>
 
                 <td className="bg-warning"
                     onClick={function () {$this.toggleView(v.index)}}>{v.calls}</td>

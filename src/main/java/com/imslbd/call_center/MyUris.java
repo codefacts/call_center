@@ -25,7 +25,7 @@ public enum MyUris {
     BRANDS("/brands", ""),
     CAMPAIGNS("/campaigns", ""),
     BR_ACTIVITY_SUMMARY("/br-activity-summary", "Br Activity Summary"), CURRENT_CAMPAIGN("/current-campaign", ""),
-    DATA_SOURCES("/dataSources", "Data");
+    DATA_SOURCES("/dataSources", "Data"), BR_INFO("/brs/br-info", "");
 
     public final String value;
     public final String label;
