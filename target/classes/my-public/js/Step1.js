@@ -18,7 +18,7 @@ site.reactjs.Step1 = React.createClass({
                 }
             };
         };
-        console.log("INIT>>>")
+        console.log("INIT>>>");
         return {
             filterFieldsRef: null,
             primaryTableRef: null,
@@ -41,10 +41,10 @@ site.reactjs.Step1 = React.createClass({
 
                 <div id="container" className="col-md-12">
 
-                    <site.reactjs.TablePrimary onInit={$this.onPrimaryTableInit}/>
+                    <site.reactjs.DERBY_JAN_2016.TablePrimary onInit={$this.onPrimaryTableInit}/>
 
                     <Pagination page={pagination.page} size={pagination.size} total={pagination.total}
-                                onPageRequest={$this.onPageRequest} navLength={25}/>
+                                onPageRequest={$this.onPageRequest} navLength={20}/>
                 </div>
 
                 {(function () {
@@ -96,7 +96,7 @@ site.reactjs.Step1 = React.createClass({
                     pagination: {page: js.pagination.page, size: js.pagination.size, total: js.pagination.total}
                 });
                 $this.state.primaryTableRef.updateData(data);
-            },
+            }
         });
     },
     onPageRequest: function (page, size) {

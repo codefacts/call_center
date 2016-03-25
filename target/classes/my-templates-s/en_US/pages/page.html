@@ -12,6 +12,9 @@
     <!-- Date Picker -->
     <link rel="stylesheet" href="/static/components/bootstrap-datepicker-1.5.0-dist/css/bootstrap-datepicker.min.css">
 
+    <!--DateTime Picker-->
+    <link rel="stylesheet" href="/my-static/css/bootstrap-datetimepicker.min.css">
+
     <!-- Select2 -->
     <!--<link rel="stylesheet" href="/static/components/select2-3.5.4/select2.css">-->
     <!--<link rel="stylesheet" href="/static/components/select2-3.5.4/select2-bootstrap.css">-->
@@ -24,9 +27,15 @@
     <link rel="stylesheet" href="/static/css/index.css"/>
 
     ~for href in styles:
-    <link rel="stylesheet" href="~href~">
+    <link rel="stylesheet" href="~href~"/>
     :~
 
+    <!--SockJS-->
+    <script src="/static/js/sockjs.min.js"></script>
+    <!--Vertx EventBus-->
+    <script src="/static/js/vertx-eventbus.js"></script>
+
+    <script src="/static/js/register-eventbus.js"></script>
 
     <!--JQuery-->
     <script src="/static/js/jquery-2.1.4.min.js"></script>
@@ -67,7 +76,15 @@
     <!--My Scripts-->
     <script src="/my-public/js/config.js"></script>
     <script src="/my-public/js/functions.js"></script>
+
+    <!--DERBY_JAN_2016-->
+    <script type="text/babel" src="/my-public/js/DERBY_JAN_2016/BrSummary.js"></script>
+    <script type="text/babel" src="/my-public/js/DERBY_JAN_2016/TablePrimary.js"></script>
+    <script type="text/babel" src="/my-public/js/DERBY_JAN_2016/WorkDayDetailsTable.js"></script>
+    <!--END-->
+
     <script type="text/babel" src="/my-public/js/route.js"></script>
+    <script type="text/babel" src="/my-public/js/BrSummary.js"></script>
     <script type="text/babel" src="/my-public/js/Sidebar.js"></script>
     <script type="text/babel" src="/my-public/js/FilterFields.js"></script>
     <script type="text/babel" src="/my-public/js/FilterFields2.js"></script>
@@ -79,8 +96,19 @@
     <script type="text/babel" src="/my-public/js/ContactDetailsAndCall.js"></script>
     <script type="text/babel" src="/my-public/js/ContactDetails.js"></script>
     <script type="text/babel" src="/my-public/js/CallSubmitForm.js"></script>
+    <script type="text/babel" src="/my-public/js/forms/CallSubmitFormBNH.js"></script>
+    <script type="text/babel" src="/my-public/js/forms/DerbyForm.js"></script>
     <script type="text/babel" src="/my-public/js/Step1.js"></script>
     <script type="text/babel" src="/my-public/js/Step2.js"></script>
+
+    <!--Grocery-->
+    <script type="text/babel" src="/my-public/js/grocery/Step1.js"></script>
+    <script type="text/babel" src="/my-public/js/grocery/FilterFields.js"></script>
+    <script type="text/babel" src="/my-public/js/grocery/WorkDayDetailsTable.js"></script>
+    <script type="text/babel" src="/my-public/js/grocery/FilterArrow.js"></script>
+    <script type="text/babel" src="/my-public/js/grocery/Filter.js"></script>
+    <script type="text/babel" src="/my-public/js/grocery/Filter.js"></script>
+
     <script type="text/babel" src="/my-public/js/app.js"></script>
 </head>
 <body>
@@ -98,5 +126,6 @@
 ~for s in scripts:
 <script src="~s.src~" type="~s.type~"></script>
 :~
+
 </body>
 </html>

@@ -25,11 +25,13 @@ public class MyApp {
     private static final String CURRENT_PROFILE = "CURRENT_PROFILE";
     private static final String PROFILES = "PROFILES";
 
+    private static final String DEV_MODE = "dev-mode";
+
     static {
         //Setting Vertx Logger
         System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory");
         if (loadConfig().getBoolean("dev-mode")) {
-            System.setProperty("dev-mode", "true");
+            System.setProperty(DEV_MODE, "true");
         }
     }
 

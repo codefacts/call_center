@@ -36,6 +36,7 @@ site.reactjs.FilterFields2 = React.createClass({
             showTools: "",
             showVideo: "",
             packsell: "",
+            recallMode: false,
         };
     },
     componentDidMount: function () {
@@ -69,13 +70,15 @@ site.reactjs.FilterFields2 = React.createClass({
                                     {
                                         $this.state.areas.map(function (area) {
                                             return (
-                                                <option value={area.id} key={Math.random()}>{area.name}</option>
+                                                <option value={area.id} key={Math.random()}>{area.name}
+                                                </option>
                                             );
                                         })
                                     }
                                 </select>
                             </div>
                         </div>
+
                         <div className="col-md-12">
                             <div className="form-group">
                                 <select className="form-control" value={$this.state.distributionHouseId}
@@ -100,7 +103,8 @@ site.reactjs.FilterFields2 = React.createClass({
                                     {
                                         $this.state.brs.map(function (area) {
                                             return (
-                                                <option value={area.id} key={Math.random()}>{area.name}</option>
+                                                <option value={area.id} key={Math.random()}>{area.name}
+                                                    [{area.id}]</option>
                                             );
                                         })
                                     }
@@ -108,12 +112,24 @@ site.reactjs.FilterFields2 = React.createClass({
                             </div>
                         </div>
 
-                        <div className="col-md-12">
+                        <div className="col-md-8">
                             <div className="form-group">
                                 <label htmlFor="exampleInputEmail1">Work Date</label>
                                 <DatePickerPopup modalId={Math.random()} modalTitle="Select Date Range"
                                                  name="workDate" value={$this.state.workDate}
                                                  onChange={$this.onWorkDateChange}/>
+                            </div>
+                        </div>
+
+                        <div className="col-md-4">
+                            <div className="form-group">
+                                <label htmlFor="recallMode">Show only</label>
+                                <select className="form-control" name="recallMode" value={$this.state.recallMode}
+                                        onChange={$this.onRecallModeChange}>
+                                    <option value="">Called/Not Called</option>
+                                    <option value="1">Called</option>
+                                    <option value="0">Not Called</option>
+                                </select>
                             </div>
                         </div>
 
@@ -199,6 +215,11 @@ site.reactjs.FilterFields2 = React.createClass({
             </div>
         );
     },
+
+    onRecallModeChange: function (e) {
+        this.setState({recallMode: e.target.value});
+    },
+
     onPtrChange: function (e) {
         this.setState({ptr: e.target.value});
     },

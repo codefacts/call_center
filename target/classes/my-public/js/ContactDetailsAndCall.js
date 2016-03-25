@@ -16,10 +16,32 @@ site.reactjs.ContactDetailsAndCall = React.createClass({
         }
     },
     componentDidMount: function () {
+        var $this = this;
+        var params = site.hash.params();
         this.props.onInit(this);
-        this.getContactDetails(site.hash.params());
+        this.getContactDetails(params);
         this.getCallOperator();
         this.getBrands();
+
+        eb.publish('LOCK_CONTACT_ID', {
+            SMS_ID: parseInt(params.sms_id),
+            CALL_OPERATOR: parseInt(params.call_operator)
+        });
+        console.log("EB.published(LOCK_CONTACT_ID): " + JSON.stringify({
+                SMS_ID: parseInt(params.sms_id),
+                CALL_OPERATOR: parseInt(params.call_operator)
+            }));
+    },
+    componentWillUnmount: function () {
+        var $this = this;
+        eb.publish('UN_LOCK_CONTACT_ID', {
+            SMS_ID: $this.state.data.SMS_ID,
+            CALL_OPERATOR: $this.state.callOperator.CALL_OPERATOR_ID
+        });
+        console.log("EB.published(UN_LOCK_CONTACT_ID): " + JSON.stringify({
+                SMS_ID: $this.state.data.SMS_ID,
+                CALL_OPERATOR: $this.state.callOperator.CALL_OPERATOR_ID
+            }));
     },
     render: function () {
         var $this = this;

@@ -2,6 +2,16 @@
 
 <script type="text/babel">
 
-    ReactDOM.render(<site.reactjs.App />, document.getElementById('app'));
+    if(eb.state !== EventBus.OPEN) {
+        document.addEventListener('EVENT_BUS_CONNECTED', function (e) {
+            ReactDOM.render(<site.reactjs.App />, document.getElementById('app'));
+            console.log("EventBus Opened and App initialized.");
+        }, false);
+    } else if (eb.state === EventBus.OPEN) {
+        ReactDOM.render(<site.reactjs.App />, document.getElementById('app'));
+        console.log("EventBus Opened and App initialized.");
+    } else {
+        alert("ERROR. Invalid eventbus state.");
+    }
 
 </script>

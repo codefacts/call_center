@@ -11,7 +11,6 @@ import com.imslbd.call_center.template.page.PageTmptBuilder;
 import com.imslbd.call_center.template.page.StartPage;
 import com.imslbd.call_center.util.MyUtil;
 import io.crm.QC;
-import io.crm.model.User;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
 import io.crm.util.Util;

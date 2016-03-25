@@ -3,7 +3,7 @@
   "PROFILES": {
     "dev": {
       "PORT": 8085,
-      "dev-mode": false,
+      "dev-mode": true,
       "templateDir": "/home/shahadat/IdeaProjects/crm-web/src/main/resources/templates-s/en_US",
       "myTemplateDir": "/home/shahadat/IdeaProjects/call_center/src/main/resources/my-templates-s/en_US",
       "STATIC_DIRECTORY": "/home/shahadat/IdeaProjects/crm-web/src/main/resources/static",
@@ -13,17 +13,22 @@
       //      "CALL_REVIEW_PORT": 7005,
       //      "CALL_REVIEW_HOST": "182.160.99.116"
       //                  "CALL_REVIEW_PORT": 8014,
-      //      "CALL_REVIEW_PORT": 4001,
+      "CALL_REVIEW_PORT": 4001,
       //      "CALL_REVIEW_PORT": 8013,
-      //      "CALL_REVIEW_HOST": "182.160.99.116",
-      "CALL_REVIEW_PORT": 6060,
-      "CALL_REVIEW_HOST": "192.168.56.2",
+      "CALL_REVIEW_HOST": "182.160.99.116",
+      //      "CALL_REVIEW_PORT": 6060,
+      //      "CALL_REVIEW_HOST": "192.168.56.2",
       //      "CALL_REVIEW_PORT": 8545,
       //      "CALL_REVIEW_HOST": "192.168.100.142",
       "database": {
         "user": "root",
         "password": "",
         "url": "jdbc:mysql://localhost:3306/call_center_db"
+      },
+      "um_database": {
+        "user": "root",
+        "password": "",
+        "url": "jdbc:mysql://localhost:3306/users_db"
       },
       "CALL_ALLOW_HOSTS": [
         "localhost",

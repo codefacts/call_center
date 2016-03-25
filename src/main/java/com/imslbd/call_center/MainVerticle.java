@@ -2,8 +2,11 @@ package com.imslbd.call_center;
 
 import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
+import com.imslbd.um.UmEvents;
+import com.imslbd.um.controller.UmUris;
+import com.imslbd.um.controller.UserController;
+import com.imslbd.um.service.UserService;
 import io.crm.QC;
-import io.crm.model.User;
 import io.crm.web.ApiEvents;
 import io.crm.web.App;
 import io.crm.web.Uris;
@@ -47,6 +50,7 @@ final public class MainVerticle extends AbstractVerticle {
     public static final String PROP_CALL_REVIEW_PORT = "CALL_REVIEW_PORT";
     public static final String PROP_CALL_REVIEW_HOST = "CALL_REVIEW_HOST";
     private JDBCClient jdbcClient;
+    private JDBCClient jdbcClientUm;
 
     @Override
     public void start() throws Exception {
@@ -89,7 +93,27 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.CONTACT_UPDATED))
             .addInboundPermitted(new PermittedOptions().setAddress(MyEvents.FIND_ALL_CALL_OPERATOR));
 
+        //UM
+
+        umBridgeOptions(bridgeOptions);
+
         return bridgeOptions;
+    }
+
+    private void umBridgeOptions(BridgeOptions bridgeOptions) {
+        bridgeOptions
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_USERS))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_USER))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_USER))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_USER))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_USER))
+        ;
+
+        bridgeOptions
+            .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.USER_CREATED))
+            .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.USER_UPDATED))
+            .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.USER_DELETED))
+        ;
     }
 
     private void initialize() {
@@ -105,6 +129,9 @@ final public class MainVerticle extends AbstractVerticle {
     public void stop() throws Exception {
         if (jdbcClient != null) {
             jdbcClient.close();
+        }
+        if (jdbcClientUm != null) {
+            jdbcClientUm.close();
         }
     }
 
@@ -146,6 +173,16 @@ final public class MainVerticle extends AbstractVerticle {
 
         DbService dbService = new DbService(jdbcClient);
         eventBus.consumer(MyEvents.FIND_ALL_DATA_SOURCES, dbService::findAllDataSources);
+
+
+        //UM
+        jdbcClientUm = JDBCClient.createNonShared(vertx, MyApp.loadConfig().getJsonObject("um_database"));
+        UserService userService = new UserService(vertx, jdbcClientUm);
+        eventBus.consumer(UmEvents.FIND_ALL_USERS, userService::findAllUsers);
+        eventBus.consumer(UmEvents.FIND_USER, userService::findUser);
+        eventBus.consumer(UmEvents.CREATE_USER, userService::createUser);
+        eventBus.consumer(UmEvents.UPDATE_USER, userService::updateUser);
+        eventBus.consumer(UmEvents.DELETE_USER, userService::deleteUser);
     }
 
     private void devLogin(EventBus eventBus) {
@@ -154,7 +191,7 @@ final public class MainVerticle extends AbstractVerticle {
             m.reply(new JsonObject()
                 .put(QC.username, "Sohan")
                 .put(QC.userId, "br-124")
-                .put(User.mobile, "01553661069")
+                .put(QC.mobile, "01553661069")
                 .put(QC.userType,
                     new JsonObject()
                         .put(QC.id, 1)
@@ -199,7 +236,7 @@ final public class MainVerticle extends AbstractVerticle {
                     new JsonObject()
                         .put(QC.username, "Sohan")
                         .put(QC.userId, "1001")
-                        .put(User.mobile, "01553661069")
+                        .put(QC.mobile, "01553661069")
                         .put(QC.userType,
                             new JsonObject()
                                 .put(QC.id, 1)
@@ -254,6 +291,12 @@ final public class MainVerticle extends AbstractVerticle {
         new CampaignController(vertx, router);
 
         new DBController(vertx, router);
+
+        //UM Controllers
+
+        UserController userController = new UserController(vertx);
+
+        router.get(UmUris.USERS_HOME.value).handler(userController::index);
     }
 
     private void otherwiseController(final Router router) {
