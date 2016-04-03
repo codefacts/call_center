@@ -2,9 +2,12 @@ package com.imslbd.call_center;
 
 import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
+import com.imslbd.um.Tables;
 import com.imslbd.um.UmEvents;
 import com.imslbd.um.controller.UmUris;
 import com.imslbd.um.controller.UserController;
+import com.imslbd.um.service.ProductService;
+import com.imslbd.um.service.UnitService;
 import com.imslbd.um.service.UserService;
 import io.crm.QC;
 import io.crm.web.ApiEvents;
@@ -35,6 +38,8 @@ import io.vertx.ext.web.handler.sockjs.PermittedOptions;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.sstore.LocalSessionStore;
 import io.vertx.ext.web.sstore.SessionStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -45,6 +50,7 @@ import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static io.vertx.core.http.HttpHeaders.TEXT_HTML;
 
 final public class MainVerticle extends AbstractVerticle {
+    public static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
     private final Set<String> publicUris = publicUris();
     public static final String PROP_PORT = "PORT";
     public static final String PROP_CALL_REVIEW_PORT = "CALL_REVIEW_PORT";
@@ -107,12 +113,22 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_USER))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_USER))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_USER))
+
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_UNITS))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_UNIT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_UNIT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_UNIT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_UNIT))
         ;
 
         bridgeOptions
             .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.USER_CREATED))
             .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.USER_UPDATED))
             .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.USER_DELETED))
+
+            .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.UNIT_CREATED))
+            .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.UNIT_UPDATED))
+            .addOutboundPermitted(new PermittedOptions().setAddress(UmEvents.UNIT_DELETED))
         ;
     }
 
@@ -174,15 +190,69 @@ final public class MainVerticle extends AbstractVerticle {
         DbService dbService = new DbService(jdbcClient);
         eventBus.consumer(MyEvents.FIND_ALL_DATA_SOURCES, dbService::findAllDataSources);
 
-
         //UM
         jdbcClientUm = JDBCClient.createNonShared(vertx, MyApp.loadConfig().getJsonObject("um_database"));
-        UserService userService = new UserService(vertx, jdbcClientUm);
-        eventBus.consumer(UmEvents.FIND_ALL_USERS, userService::findAllUsers);
-        eventBus.consumer(UmEvents.FIND_USER, userService::findUser);
-        eventBus.consumer(UmEvents.CREATE_USER, userService::createUser);
-        eventBus.consumer(UmEvents.UPDATE_USER, userService::updateUser);
-        eventBus.consumer(UmEvents.DELETE_USER, userService::deleteUser);
+
+
+        WebUtils.query("select * from " + Tables.products + " where id < 0", jdbcClientUm)
+            .map(rs -> {
+                String[] colNames = new String[rs.getNumColumns()];
+                return rs.getColumnNames().toArray(colNames);
+            })
+            .then(columnNames -> {
+
+                ProductService productService = new ProductService(jdbcClientUm, columnNames, vertx);
+                eventBus.consumer(UmEvents.FIND_ALL_PRODUCTS, productService::findAll);
+                eventBus.consumer(UmEvents.FIND_PRODUCT, productService::find);
+                eventBus.consumer(UmEvents.CREATE_PRODUCT, productService::create);
+                eventBus.consumer(UmEvents.UPDATE_PRODUCT, productService::update);
+                eventBus.consumer(UmEvents.DELETE_PRODUCT, productService::delete);
+
+            })
+            .error(e -> {
+                LOGGER.error("Error creating UnitService", e);
+            })
+        ;
+
+        WebUtils.query("select * from " + Tables.users + " where id < 0", jdbcClientUm)
+            .map(rs -> {
+                String[] colNames = new String[rs.getNumColumns()];
+                return rs.getColumnNames().toArray(colNames);
+            })
+            .then(columnNames -> {
+
+                UserService userService = new UserService(jdbcClientUm, columnNames, vertx);
+                eventBus.consumer(UmEvents.FIND_ALL_USERS, userService::findAll);
+                eventBus.consumer(UmEvents.FIND_USER, userService::find);
+                eventBus.consumer(UmEvents.CREATE_USER, userService::create);
+                eventBus.consumer(UmEvents.UPDATE_USER, userService::update);
+                eventBus.consumer(UmEvents.DELETE_USER, userService::delete);
+
+            })
+            .error(e -> {
+                LOGGER.error("Error creating UnitService", e);
+            })
+        ;
+
+        WebUtils.query("select * from units where id < 0", jdbcClientUm)
+            .map(rs -> {
+                String[] colNames = new String[rs.getNumColumns()];
+                return rs.getColumnNames().toArray(colNames);
+            })
+            .then(columnNames -> {
+                UnitService unitService = new UnitService(jdbcClientUm, columnNames, vertx);
+                eventBus.consumer(UmEvents.FIND_ALL_UNITS, unitService::findAllUnits);
+                eventBus.consumer(UmEvents.FIND_UNIT, unitService::findUnit);
+                eventBus.consumer(UmEvents.CREATE_UNIT, unitService::createUnit);
+                eventBus.consumer(UmEvents.UPDATE_UNIT, unitService::updateUnit);
+                eventBus.consumer(UmEvents.DELETE_UNIT, unitService::deleteUnit);
+
+                System.out.println("Unit Service Registered");
+            })
+            .error(e -> {
+                LOGGER.error("Error creating UnitService", e);
+            })
+        ;
     }
 
     private void devLogin(EventBus eventBus) {

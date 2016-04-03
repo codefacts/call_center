@@ -1,13 +1,12 @@
 package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.imslbd.call_center.MyApp;
 import com.imslbd.um.Tables;
 import com.imslbd.um.Um;
 import com.imslbd.um.UmErrorCodes;
 import com.imslbd.um.UmUtils;
+import com.imslbd.um.model.Product;
 import com.imslbd.um.model.Unit;
 import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
@@ -19,6 +18,7 @@ import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformatio
 import io.crm.pipelines.validator.ValidationPipeline;
 import io.crm.pipelines.validator.ValidationResult;
 import io.crm.pipelines.validator.Validator;
+import io.crm.pipelines.validator.composer.FieldValidatorComposer;
 import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
@@ -35,19 +35,18 @@ import io.vertx.ext.jdbc.JDBCClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.SecureRandom;
-import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.imslbd.um.service.Services.converters;
+
 /**
- * Created by shahadat on 3/6/16.
+ * Created by shahadat on 4/3/16.
  */
-public class UserService {
+public class ProductService {
+
     public static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
     private static final java.lang.String SIZE = "size";
     private static final String PAGE = "page";
@@ -56,13 +55,15 @@ public class UserService {
     private static final String DATA = "data";
     private static final Integer DEFAULT_PAGE_SIZE = 100;
     private static final String VALIDATION_ERROR = "validationError";
+    private static final String TABLE_NAME = Tables.products.name();
 
     private final Vertx vertx;
     private final JDBCClient jdbcClient;
     private final RemoveNullsTransformation removeNullsTransformation;
-    private final DefaultValueTransformation defaultValueTransformationParams = new DefaultValueTransformation(Util.EMPTY_JSON_OBJECT);
+    private final DefaultValueTransformation defaultValueTransformationParams =
+        new DefaultValueTransformation(Util.EMPTY_JSON_OBJECT);
 
-    private static final String USER_NOT_FOUND = "USER_NOT_FOUND";
+    private static final String PRODUCT_NOT_FOUND = "USER_NOT_FOUND";
 
     private final IncludeExcludeTransformation includeExcludeTransformation;
     private final ConverterTransformation converterTransformation;
@@ -71,14 +72,14 @@ public class UserService {
     private final JsonTransformationPipeline transformationPipeline;
     private final ValidationPipeline<JsonObject> validationPipeline;
 
-    public UserService(JDBCClient jdbcClient, String[] fields, Vertx vertx) {
+    public ProductService(JDBCClient jdbcClient, String[] fields, Vertx vertx) {
         this.vertx = vertx;
         this.jdbcClient = jdbcClient;
 
         removeNullsTransformation = new RemoveNullsTransformation();
         includeExcludeTransformation = new IncludeExcludeTransformation(
             ImmutableSet.copyOf(Arrays.asList(fields)), null);
-        converterTransformation = new ConverterTransformation(converters(fields));
+        converterTransformation = new ConverterTransformation(converters(fields, TABLE_NAME));
 
         defaultValueTransformation = new DefaultValueTransformation(
             new JsonObject()
@@ -101,58 +102,23 @@ public class UserService {
     private List<Validator<JsonObject>> validators() {
         List<Validator<JsonObject>> validators = new ArrayList<>();
         JsonObjectValidatorComposer validatorComposer = new JsonObjectValidatorComposer(validators, Um.messageBundle)
-            .field(User.USER_ID,
+            .field(Product.NAME,
                 fieldValidatorComposer -> fieldValidatorComposer
                     .stringType()
                     .notNullEmptyOrWhiteSpace())
-            .field(User.USERNAME,
+            .field(Product.MANUFACTURER_PRICE,
                 fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType())
-            .field(User.PASSWORD,
+                    .numberType()
+                    .notNull().nonZero().positive())
+            .field(Product.MANUFACTURER_PRICE_UNIT_ID,
                 fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType())
-            .field(User.NAME,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType())
-            .field(User.PHONE,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType());
+                    .numberType()
+                    .notNull().nonZero().positive())
+            .field(Product.REMARKS,
+                FieldValidatorComposer::stringType)
+            .field(Product.SKU,
+                FieldValidatorComposer::stringType);
         return validatorComposer.getValidatorList();
-    }
-
-    private ImmutableMap<String, Function<Object, Object>> converters(String[] fields) {
-        JsonObject db = MyApp.loadConfig().getJsonObject(Services.DATABASE);
-        String url = db.getString("url");
-        String user = db.getString("user");
-        String password = db.getString("password");
-
-        ImmutableMap.Builder<String, Function<Object, Object>> builder = ImmutableMap.builder();
-        try {
-            try (Connection connection = DriverManager.getConnection(url, user, password)) {
-                Statement statement = connection.createStatement();
-                statement.execute("select * from " + Tables.users.name());
-                ResultSet rs = statement.getResultSet();
-                ResultSetMetaData metaData = rs.getMetaData();
-
-                int columnCount = metaData.getColumnCount();
-                for (int i = 0; i < columnCount; i++) {
-                    int columnType = metaData.getColumnType(i + 1);
-                    Function<Object, Object> converter = Services.TYPE_CONVERTERS.get(columnType);
-                    Objects.requireNonNull(converter, "Type Converter can't be null for Type: " +
-                        "[" + columnType + ": " + Services.JDBC_TYPES.get(columnType) + "]");
-                    builder.put(fields[i], converter);
-                    System.out.println(columnType + ": " + Services.JDBC_TYPES.get(columnType));
-                }
-            }
-        } catch (SQLException e) {
-            LOGGER.error("Error connecting to database through jdbc", e);
-        }
-
-        return builder.build();
     }
 
     public void findAll(Message<JsonObject> message) {
@@ -162,7 +128,7 @@ public class UserService {
             .then(json -> {
                 int page = json.getInteger(PAGE, 1);
                 int size = json.getInteger(SIZE, DEFAULT_PAGE_SIZE);
-                String from = "from users";
+                String from = "from " + TABLE_NAME;
 
                 Promises.when(
                     WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
@@ -188,13 +154,13 @@ public class UserService {
         ;
     }
 
-    public void find(Message<String> message) {
+    public void find(Message<Object> message) {
         Promises
             .callable(() -> message.body())
             .then(
-                id -> WebUtils.query("select * from users where id = " + id, jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? USER_NOT_FOUND : Decision.OTHERWISE)
-                    .on(USER_NOT_FOUND,
+                id -> WebUtils.query("select * from " + TABLE_NAME + " where id = " + id, jdbcClient)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? PRODUCT_NOT_FOUND : Decision.OTHERWISE)
+                    .on(PRODUCT_NOT_FOUND,
                         rs -> {
                             message.reply(
                                 new JsonObject()
@@ -304,7 +270,7 @@ public class UserService {
             .error(e -> ExceptionUtil.fail(message, e));
     }
 
-    public void delete(Message<String> message) {
+    public void delete(Message<Object> message) {
         Promises.callable(() -> Converters.toLong(message.body()))
             .mapToPromise(id -> WebUtils.delete(Tables.users.name(), id, jdbcClient)
                 .then(message::reply))
@@ -312,12 +278,5 @@ public class UserService {
                 ExceptionUtil.fail(message, e))
             .error(e -> e.printStackTrace())
         ;
-    }
-
-    public static void main(String... args) {
-        SecureRandom secureRandom = new SecureRandom();
-        String substring = (secureRandom.nextLong() + "").substring(9);
-        System.out.println(substring);
-        System.out.println(substring.length());
     }
 }

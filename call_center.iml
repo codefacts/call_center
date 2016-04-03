@@ -20,14 +20,6 @@
     <orderEntry type="library" name="Maven: org.codehaus.janino:janino:2.5.16" level="project" />
     <orderEntry type="library" name="Maven: log4j:log4j:1.2.17" level="project" />
     <orderEntry type="module" module-name="web" />
-    <orderEntry type="library" name="Maven: org.apache.activemq:activemq-pool:5.11.1" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.activemq:activemq-jms-pool:5.11.1" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.geronimo.specs:geronimo-jms_1.1_spec:1.1.1" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.activemq:activemq-client:5.11.1" level="project" />
-    <orderEntry type="library" name="Maven: org.fusesource.hawtbuf:hawtbuf:1.11" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.geronimo.specs:geronimo-j2ee-management_1.1_spec:1.0.1" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.geronimo.specs:geronimo-jta_1.0.1B_spec:1.0.1" level="project" />
-    <orderEntry type="library" name="Maven: commons-pool:commons-pool:1.6" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:org.eclipse.persistence.jpa:2.6.0" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:javax.persistence:2.1.0" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:org.eclipse.persistence.asm:2.6.0" level="project" />
@@ -35,7 +27,6 @@
     <orderEntry type="library" name="Maven: org.glassfish:javax.json:1.0.4" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:org.eclipse.persistence.jpa.jpql:2.6.0" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:org.eclipse.persistence.core:2.6.0" level="project" />
-    <orderEntry type="library" name="Maven: io.vertx:vertx-lang-js:3.0.0" level="project" />
     <orderEntry type="library" name="Maven: io.vertx:vertx-core:3.0.0" level="project" />
     <orderEntry type="library" name="Maven: io.netty:netty-common:4.0.28.Final" level="project" />
     <orderEntry type="library" name="Maven: io.netty:netty-buffer:4.0.28.Final" level="project" />

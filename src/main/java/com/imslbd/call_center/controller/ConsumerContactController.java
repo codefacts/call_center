@@ -5,6 +5,7 @@ import com.imslbd.call_center.MyUris;
 import com.imslbd.call_center.gv;
 import com.imslbd.call_center.util.MyUtil;
 import io.crm.promise.Promises;
+import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
 import io.crm.web.util.Converters;
 import io.crm.web.util.WebUtils;
@@ -17,6 +18,8 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.stream.Collectors;
 
 import static io.crm.util.Util.*;
@@ -66,8 +69,8 @@ public class ConsumerContactController {
             }
 
             MyUtil.splitPair(params.get("work-date-range"), ":").accept((v1, v2) -> {
-                criteria.put(gv.workDateFrom, MyUtil.formatDate(Converters.toDate(v1), null));
-                criteria.put(gv.workDateTo, MyUtil.formatDate(Converters.toDate(v2), null));
+                criteria.put(gv.workDateFrom, MyUtil.formatDate(toDate(v1), null));
+                criteria.put(gv.workDateTo, MyUtil.formatDate(toDate(v2), null));
             });
 
             criteria.put("recallMode", params.get(gv.recallMode));
@@ -128,6 +131,11 @@ public class ConsumerContactController {
                 .error(e ->
                     System.out.println(e));
         });
+    }
+
+    public static Date toDate(final String val) {
+        if (isEmptyOrNullOrSpaces(val)) return null;
+        return ExceptionUtil.toRuntimeCall(() -> new SimpleDateFormat("dd-MMM-yyyy").parse(val.trim()));
     }
 
     public void consumerContactsCallStep_2(Router router) {
