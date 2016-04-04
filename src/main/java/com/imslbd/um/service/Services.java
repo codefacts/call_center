@@ -61,6 +61,7 @@ public class Services {
             .put(-1, DataTypes.STRING)
             .put(91, DataTypes.DATE)
             .put(93, DataTypes.DATE)
+            .put(8, DataTypes.DATE.DOUBLE)
         ;
         DATA_TYPES_MAP = builder.build();
     }
@@ -73,6 +74,7 @@ public class Services {
             .put(-1, s -> s)
             .put(91, Converters::toDate)
             .put(93, Converters::toDate)
+            .put(8, Converters::toDouble)
         ;
 
         TYPE_CONVERTERS = builder.build();
@@ -121,7 +123,7 @@ public class Services {
                     int columnType = metaData.getColumnType(i + 1);
                     Function<Object, Object> converter = Services.TYPE_CONVERTERS.get(columnType);
                     Objects.requireNonNull(converter, "Type Converter can't be null for Type: " +
-                        "[" + columnType + ": " + Services.JDBC_TYPES.get(columnType) + "]");
+                        "[" + fields[i] + " " + columnType + ": " + Services.JDBC_TYPES.get(columnType) + "]");
                     builder.put(fields[i], converter);
                     System.out.println(columnType + ": " + Services.JDBC_TYPES.get(columnType));
                 }

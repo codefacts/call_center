@@ -6,10 +6,13 @@ import com.imslbd.um.Tables;
 import com.imslbd.um.UmEvents;
 import com.imslbd.um.controller.UmUris;
 import com.imslbd.um.controller.UserController;
+import com.imslbd.um.model.Product;
 import com.imslbd.um.service.ProductService;
 import com.imslbd.um.service.UnitService;
 import com.imslbd.um.service.UserService;
 import io.crm.QC;
+import io.crm.promise.Promises;
+import io.crm.util.Util;
 import io.crm.web.ApiEvents;
 import io.crm.web.App;
 import io.crm.web.Uris;
@@ -119,6 +122,12 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_UNIT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_UNIT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_UNIT))
+
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_PRODUCTS))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_PRODUCT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_PRODUCT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_PRODUCT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_PRODUCT))
         ;
 
         bridgeOptions
@@ -194,21 +203,35 @@ final public class MainVerticle extends AbstractVerticle {
         jdbcClientUm = JDBCClient.createNonShared(vertx, MyApp.loadConfig().getJsonObject("um_database"));
 
 
-        WebUtils.query("select * from " + Tables.products + " where id < 0", jdbcClientUm)
-            .map(rs -> {
-                String[] colNames = new String[rs.getNumColumns()];
-                return rs.getColumnNames().toArray(colNames);
-            })
-            .then(columnNames -> {
-
-                ProductService productService = new ProductService(jdbcClientUm, columnNames, vertx);
+        Promises
+            .when(
+                WebUtils.query("select * from " + Tables.products + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select * from " + Tables.productUnitPrices + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select * from " + Tables.units + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select max(" + Product.ID + ") as maxId from " + Tables.products
+                    + " where 1", jdbcClientUm)
+                    .map(rs -> rs.getRows().get(0).getLong("maxId"))
+            )
+            .then(tpl2 -> tpl2.accept((names, priceNames, unitFields, maxId) -> {
+                ProductService productService = new ProductService(jdbcClientUm, names, priceNames, unitFields, Util.or(maxId, 1L), vertx);
                 eventBus.consumer(UmEvents.FIND_ALL_PRODUCTS, productService::findAll);
                 eventBus.consumer(UmEvents.FIND_PRODUCT, productService::find);
                 eventBus.consumer(UmEvents.CREATE_PRODUCT, productService::create);
                 eventBus.consumer(UmEvents.UPDATE_PRODUCT, productService::update);
                 eventBus.consumer(UmEvents.DELETE_PRODUCT, productService::delete);
-
-            })
+            }))
             .error(e -> {
                 LOGGER.error("Error creating UnitService", e);
             })
