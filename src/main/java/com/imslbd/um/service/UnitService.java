@@ -159,6 +159,7 @@ public class UnitService {
             }
 
             WebUtils.create(Tables.units.name(), unitJson, jdbcClient)
+                .map(updateResult -> updateResult.getKeys().getLong(0))
                 .then(id -> message.reply(id))
                 .error(e -> ExceptionUtil.fail(message, e))
                 .then(id -> vertx.eventBus().publish(UmEvents.UNIT_CREATED, unitJson))
@@ -192,6 +193,7 @@ public class UnitService {
             }
 
             WebUtils.update(Tables.units.name(), unitJson, unitJson.getLong("id"), jdbcClient)
+                .map(updateResult -> updateResult.getKeys().getLong(0))
                 .then(message::reply)
                 .error(e -> ExceptionUtil.fail(message, e))
                 .then(v -> vertx.eventBus().publish(UmEvents.UNIT_UPDATED, unitJson))

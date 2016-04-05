@@ -26,6 +26,7 @@ public class UmEvents {
     public static final String UNIT_DELETED = um("UNIT_DELETED");
     public static final java.lang.String FIND_ALL_PRODUCTS = "FIND_ALL_PRODUCTS";
     public static final java.lang.String FIND_PRODUCT = "FIND_PRODUCT";
+    public static final java.lang.String FIND_PRODUCT_DECOMPOSED = "FIND_PRODUCT_DECOMPOSED";
     public static final java.lang.String CREATE_PRODUCT = "CREATE_PRODUCT";
     public static final java.lang.String UPDATE_PRODUCT = "UPDATE_PRODUCT";
     public static final java.lang.String DELETE_PRODUCT = "DELETE_PRODUCT";

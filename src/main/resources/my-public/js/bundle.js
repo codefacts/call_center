@@ -29554,8 +29554,181 @@ function toAbsoluteUri(str, params) {
 module.exports = document;
 
 },{}],172:[function(require,module,exports){
-arguments[4][2][0].apply(exports,arguments)
-},{"dup":2,"jquery":212}],173:[function(require,module,exports){
+"use strict";
+
+var $ = require('jquery');
+
+exports.ajax = function ajax(args) {
+    $.ajax({
+        url: args.url,
+        data: args.data,
+        method: args.method,
+        dataType: 'json',
+        cache: false,
+        success: args.success,
+        error: args.error || function (xhr, status, err) {
+            alert(xhr.responseText);
+        },
+        complete: args.complete
+    });
+};
+
+exports.formatDate = function formatDate(date) {
+    if (!date) {
+        return "";
+    }
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    var day = date.getDate();
+    var monthIndex = date.getMonth();
+    var year = date.getFullYear();
+
+    return day + "-" + monthNames[monthIndex] + "-" + year;
+};
+
+exports.formatDateTime = function formatDateTime(date) {
+    if (!date) {
+        return "";
+    }
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    var day = date.getDate();
+    var monthIndex = date.getMonth();
+    var year = date.getFullYear();
+
+    return day + "-" + monthNames[monthIndex] + "-" + year + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+};
+
+exports.formatTimeAmPm = function formatTimeAmPm(date) {
+    if (!date) {
+        return "";
+    }
+
+    var hours = date.getHours();
+    var amPm = hours < 12 ? "AM" : "PM";
+    hours = hours - 12;
+    hours = hours == 0 ? 12 : hours;
+
+    return Math.abs(hours) + ":" + date.getMinutes() + ":" + date.getSeconds() + " " + amPm;
+};
+
+exports.formatDateTimeAmPm = function formatDateTimeAmPm(date) {
+    if (!date) {
+        return "";
+    }
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    var day = date.getDate();
+    var monthIndex = date.getMonth();
+    var year = date.getFullYear();
+
+    var hours = date.getHours();
+    var amPm = hours < 12 ? "AM" : "PM";
+    hours = hours - 12;
+    hours = hours == 0 ? 12 : hours;
+
+    return day + "-" + monthNames[monthIndex] + "-" + year + " " + Math.abs(hours) + ":" + date.getMinutes() + ":" + date.getSeconds() + " " + amPm;
+};
+
+exports.copy = function copy(v) {
+    if (v === undefined) return v;
+    return JSON.parse(JSON.stringify(v));
+};
+
+exports.merge = function merge(object1, object2) {
+    var obj = {};
+    for (var x in object1) {
+        obj[x] = object1[x];
+    }
+    for (var x in object2) {
+        obj[x] = obj[x] || object2[x];
+    }
+    return obj;
+};
+
+exports.merge2 = function merge2(object1, object2) {
+    var obj = {};
+    for (var x in object1) {
+        obj[x] = object1[x];
+    }
+    for (var x in object2) {
+        obj[x] = object2[x];
+    }
+    return obj;
+};
+
+exports.exclude = function exclude(obj1, arrayOfKeys) {
+    var obj = exports.copy(obj1);
+    for (var x in arrayOfKeys) {
+        delete obj[arrayOfKeys[x]];
+    }
+    return obj;
+};
+
+exports.include = function include(obj1, arrayOfKeys) {
+    var obj = {};
+    for (var x in arrayOfKeys) {
+        var key = arrayOfKeys[x];
+        obj[key] = obj1[key];
+    }
+    return obj;
+};
+
+exports.removeEmptyNullWhiteSpaces = function removeEmptyNullWhiteSpaces(srcObj) {
+    var obj = {};
+    for (var x in srcObj) {
+        var val = srcObj[x];
+        if (val !== false && (!val || typeof val == "string" && !val.trim())) {
+            continue;
+        }
+        obj[x] = val;
+    }
+    return obj;
+};
+
+exports.convert = function convert(src, converters) {
+    src = src || {};
+    var to = {};
+    for (var x in converters) {
+        if (!!src[x]) {
+            to[x] = converters[x](src[x]);
+        }
+    }
+    return to;
+};
+
+exports.removeEmptyChilds = function removeEmptyChilds(array) {
+    array = array || [];
+    var newArray = [];
+    for (var x in array) {
+        var val = array[x];
+        if (Object.keys(val).length > 0) {
+            newArray.push(val);
+        }
+    }
+    return newArray;
+};
+
+exports.parameterize = function parameterize(uriTemplate, prms) {
+    prms = prms || {};
+    uriTemplate = uriTemplate || "";
+
+    var uri = uriTemplate.split('/').map(function (part) {
+        if (part.startsWith(':')) {
+            return prms[part.substring(1)];
+        } else {
+            return part;
+        }
+    }).join('/');
+
+    return uri;
+};
+
+exports.escapeRegexCharacters = function escapeRegexCharacters(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+},{"jquery":212}],173:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -94561,6 +94734,7 @@ var NewUnitDialog = require('./../unit/NewUnitDialog');
 var ProductsInventoryEditable = require('./ProductsInventoryEditable');
 
 var productService = require('./ProductService');
+var unitService = require('../unit/UnitService');
 var Uris = require('../Uris');
 
 var CreateProduct;
@@ -94598,6 +94772,13 @@ module.exports = CreateProduct = _react2.default.createClass({
             inventories: [{ id: 1, name: 'Lb' }, { id: 2, name: 'Kg' }, { id: 3, name: 'Ltr' }]
         };
     },
+    componentDidMount: function componentDidMount() {
+        var $this = this;
+        unitService.findAllUnits().then(function (rsp) {
+            return $this.setState({ units: rsp.data });
+        });
+    },
+    componentWillUnmount: function componentWillUnmount() {},
     render: function render() {
         var $this = this;
         var product = $this.state.product || {};
@@ -94779,6 +94960,7 @@ module.exports = CreateProduct = _react2.default.createClass({
                         )
                     ),
                     _react2.default.createElement(ProductsUnitWisePriceEditable, { productsUnitWisePrice: prices,
+                        units: units,
                         onInit: function onInit(editable) {
                             $this.setState({ productsUnitWisePriceEditable: editable });
                         },
@@ -94900,7 +95082,7 @@ module.exports = CreateProduct = _react2.default.createClass({
     }
 });
 
-},{".././Modal":167,".././functions":172,"../Uris":170,"./../unit/NewUnitDialog":1095,"./ProductService":856,"./ProductsInventoryEditable":858,"./ProductsUnitWisePrice":860,"./ProductsUnitWisePriceEditable":861,"./SingleProductViewShort":863,"react":784}],850:[function(require,module,exports){
+},{".././Modal":167,".././functions":172,"../Uris":170,"../unit/UnitService":1097,"./../unit/NewUnitDialog":1095,"./ProductService":856,"./ProductsInventoryEditable":858,"./ProductsUnitWisePrice":860,"./ProductsUnitWisePriceEditable":861,"./SingleProductViewShort":863,"react":784}],850:[function(require,module,exports){
 "use strict";
 
 var _react = require('react');
@@ -94917,34 +95099,37 @@ var ProductsUnitWisePrice = require('./ProductsUnitWisePrice');
 var NewUnitDialog = require('./../unit/NewUnitDialog');
 var ProductsInventoryEditable = require('./ProductsInventoryEditable');
 
+var productService = require('./ProductService');
+var unitService = require('../unit/UnitService');
+var Uris = require('../Uris');
+
 var CreateProduct;
 module.exports = CreateProduct = _react2.default.createClass({
     displayName: 'CreateProduct',
 
     getInitialState: function getInitialState() {
         return {
-            product: {
-                price: [],
-                inventories: [{
-                    id: Math.random(),
-                    inventory: { id: 1, name: 'Inv-2' },
-                    quantity: 545,
-                    available: 545,
-                    unitId: 1
-                }, {
-                    id: Math.random(),
-                    inventory: { id: 1, name: 'Inv-2' },
-                    quantity: 545,
-                    available: 545,
-                    unitId: 1
-                }, {
-                    id: Math.random(),
-                    inventory: { id: 1, name: 'Inv-2' },
-                    quantity: 545,
-                    available: 545,
-                    unitId: 1
-                }]
-            },
+            product: {},
+            prices: [],
+            productInventories: [{
+                id: Math.random(),
+                inventory: { id: 1, name: 'Inv-2' },
+                quantity: 545,
+                available: 545,
+                unitId: 1
+            }, {
+                id: Math.random(),
+                inventory: { id: 1, name: 'Inv-2' },
+                quantity: 545,
+                available: 545,
+                unitId: 1
+            }, {
+                id: Math.random(),
+                inventory: { id: 1, name: 'Inv-2' },
+                quantity: 545,
+                available: 545,
+                unitId: 1
+            }],
             createModal: function createModal() {
                 return { title: '', body: '', isOpen: false };
             },
@@ -94953,9 +95138,25 @@ module.exports = CreateProduct = _react2.default.createClass({
             inventories: [{ id: 1, name: 'Lb' }, { id: 2, name: 'Kg' }, { id: 3, name: 'Ltr' }]
         };
     },
+    componentDidMount: function componentDidMount() {
+        var $this = this;
+        unitService.findAllUnits().then(function (rsp) {
+            return $this.setState({ units: rsp.data });
+        });
+        productService.findDecomposed($this.props.params.id).then(function (product) {
+            var state = { product: lib.exclude(product, ['prices']), prices: product.prices };
+            return state;
+        }).then(function (state) {
+            return $this.setState(state);
+        });
+    },
+    componentWillUnmount: function componentWillUnmount() {},
     render: function render() {
         var $this = this;
         var product = $this.state.product || {};
+        var prices = $this.state.prices || [];
+        var productInventories = $this.state.productInventories || [];
+
         var createModal = $this.state.createModal;
         var modal = !!createModal ? createModal() || {} : {};
         var units = $this.state.units || [];
@@ -94981,7 +95182,7 @@ module.exports = CreateProduct = _react2.default.createClass({
                                 _react2.default.createElement(
                                     'h3',
                                     { className: 'panel-title' },
-                                    'Create Product'
+                                    'Update Product'
                                 )
                             ),
                             _react2.default.createElement(
@@ -94998,8 +95199,8 @@ module.exports = CreateProduct = _react2.default.createClass({
                                     _react2.default.createElement(
                                         'span',
                                         { className: 'btn btn-primary',
-                                            onClick: $this.createProduct },
-                                        'Create'
+                                            onClick: $this.updateProduct },
+                                        'Update'
                                     )
                                 )
                             )
@@ -95023,7 +95224,7 @@ module.exports = CreateProduct = _react2.default.createClass({
                                         'Name'
                                     ),
                                     _react2.default.createElement('input', { type: 'text', className: 'form-control', id: 'name', placeholder: 'Name',
-                                        name: 'name', value: product.name })
+                                        name: 'name', value: product.name, onChange: $this.onProductChange })
                                 ),
                                 _react2.default.createElement(
                                     'div',
@@ -95034,7 +95235,7 @@ module.exports = CreateProduct = _react2.default.createClass({
                                         'SKU'
                                     ),
                                     _react2.default.createElement('input', { type: 'text', className: 'form-control', id: 'sku', placeholder: 'SKU',
-                                        name: 'sku', value: product.sku })
+                                        name: 'sku', value: product.sku, onChange: $this.onProductChange })
                                 ),
                                 _react2.default.createElement(
                                     'div',
@@ -95047,30 +95248,32 @@ module.exports = CreateProduct = _react2.default.createClass({
                                     _react2.default.createElement('input', { type: 'number', className: 'form-control', id: 'manufacturerPrice',
                                         placeholder: 'Manufacturer Price',
                                         name: 'manufacturerPrice',
-                                        value: (product.manufacturerPrice || {}).amount })
+                                        value: product.manufacturerPrice,
+                                        onChange: $this.onProductChange })
                                 ),
                                 _react2.default.createElement(
                                     'div',
                                     { className: 'form-group col-md-6' },
                                     _react2.default.createElement(
                                         'label',
-                                        { htmlFor: 'manufacturerPriceUnit' },
+                                        { htmlFor: 'manufacturerPriceUnitId' },
                                         'Manufacturer Price Unit'
                                     ),
                                     _react2.default.createElement(
                                         'select',
                                         { className: 'form-control',
-                                            id: 'manufacturerPriceUnit', name: 'manufacturerPriceUnit',
-                                            value: ((product.manufacturerPrice || {}).unit || {}).id },
+                                            id: 'manufacturerPriceUnitId', name: 'manufacturerPriceUnitId',
+                                            value: product.manufacturerPriceUnitId,
+                                            onChange: $this.onProductChange },
                                         _react2.default.createElement(
                                             'option',
-                                            { id: 0 },
+                                            { id: 0, value: 0 },
                                             'Select Unit'
                                         ),
                                         units.map(function (unit) {
                                             return _react2.default.createElement(
                                                 'option',
-                                                { key: unit.id, id: unit.id },
+                                                { key: unit.id, value: unit.id },
                                                 unit.name
                                             );
                                         })
@@ -95128,7 +95331,8 @@ module.exports = CreateProduct = _react2.default.createClass({
                             )
                         )
                     ),
-                    _react2.default.createElement(ProductsUnitWisePriceEditable, { productsUnitWisePrice: product.price,
+                    _react2.default.createElement(ProductsUnitWisePriceEditable, { productsUnitWisePrice: prices,
+                        units: units,
                         onInit: function onInit(editable) {
                             $this.setState({ productsUnitWisePriceEditable: editable });
                         },
@@ -95139,6 +95343,13 @@ module.exports = CreateProduct = _react2.default.createClass({
                 _react2.default.createElement(NewUnitDialog, { onInit: $this.onNewUnitInit })
             )
         );
+    },
+    onProductChange: function onProductChange(e) {
+        var $this = this;
+
+        var product = $this.state.product || {};
+        product[e.target.name] = e.target.value;
+        $this.setState({ product: product });
     },
     removeItem: function removeItem(item, inventories) {
         var $this = this;
@@ -95169,7 +95380,17 @@ module.exports = CreateProduct = _react2.default.createClass({
     addMoreUnitWisePrice: function addMoreUnitWisePrice() {
         this.state.productsUnitWisePriceEditable.addMoreUnitWisePrice();
     },
-    createProduct: function createProduct() {
+    updateProduct: function updateProduct() {
+        var $this = this;
+
+        console.log('product', JSON.stringify($this.state.product));
+
+        productService.update(lib.merge2($this.state.product, {
+            prices: $this.state.prices
+        })).then(productService.find).then($this.showSuccessDialog);
+    },
+
+    showSuccessDialog: function showSuccessDialog(product) {
         var $this = this;
 
         function onClose() {
@@ -95192,7 +95413,7 @@ module.exports = CreateProduct = _react2.default.createClass({
                         _react2.default.createElement(
                             'div',
                             { className: 'col-md-12' },
-                            _react2.default.createElement(SingleProductViewShort, { product: $this.state.product })
+                            _react2.default.createElement(SingleProductViewShort, { product: product })
                         )
                     ),
                     footer: _react2.default.createElement(
@@ -95205,12 +95426,14 @@ module.exports = CreateProduct = _react2.default.createClass({
                         ),
                         _react2.default.createElement(
                             'a',
-                            { href: '#', className: 'btn btn-success pull-left' },
+                            { href: Uris.toAbsoluteUri(Uris.PRODUCT.EDIT, { id: product.id }),
+                                className: 'btn btn-success pull-left' },
                             'Edit'
                         ),
                         _react2.default.createElement(
                             'a',
-                            { href: '#', className: 'btn btn-success pull-left' },
+                            { href: Uris.toAbsoluteUri(Uris.PRODUCT.VIEW, { id: product.id }),
+                                className: 'btn btn-success pull-left' },
                             'View Details'
                         )
                     ),
@@ -95226,14 +95449,12 @@ module.exports = CreateProduct = _react2.default.createClass({
     onProductsUnitWisePriceChange: function onProductsUnitWisePriceChange(productsUnitWisePrice) {
         var $this = this;
         $this.setState({
-            product: lib.merge2($this.state.product, {
-                price: productsUnitWisePrice
-            })
+            prices: productsUnitWisePrice
         });
     }
 });
 
-},{".././Modal":167,".././functions":172,"./../unit/NewUnitDialog":1095,"./ProductsInventoryEditable":858,"./ProductsUnitWisePrice":860,"./ProductsUnitWisePriceEditable":861,"./SingleProductViewShort":863,"react":784}],851:[function(require,module,exports){
+},{".././Modal":167,".././functions":172,"../Uris":170,"../unit/UnitService":1097,"./../unit/NewUnitDialog":1095,"./ProductService":856,"./ProductsInventoryEditable":858,"./ProductsUnitWisePrice":860,"./ProductsUnitWisePriceEditable":861,"./SingleProductViewShort":863,"react":784}],851:[function(require,module,exports){
 'use strict';
 
 var Events = {
@@ -95408,7 +95629,7 @@ var PricePerUnit = React.createClass({
         var $this = this;
         var price = $this.props.price;
         var unit = $this.props.unit;
-        return !price ? '' : React.createElement(
+        return !price ? React.createElement('span', null) : React.createElement(
             'span',
             { style: $this.props.style || {} },
             price,
@@ -95430,19 +95651,19 @@ var PriceView = React.createClass({
 
     getDefaultProps: function getDefaultProps() {
         return {
-            price: []
+            prices: []
         };
     },
     render: function render() {
         var $this = this;
-        var price = $this.props.price;
+        var prices = $this.props.prices || [];
         return React.createElement(
             'table',
             { className: 'table table-condensed', style: { margin: 0 } },
             React.createElement(
                 'tbody',
                 null,
-                (price || []).map(function (p) {
+                prices.map(function (p) {
                     return !p || !p.amount ? '' : React.createElement(
                         'tr',
                         { key: Math.random() },
@@ -95553,7 +95774,7 @@ module.exports = ProductList = React.createClass({
     formatPrice: function formatPrice(price) {
         price = price || [];
 
-        return React.createElement(PriceView, { price: price });
+        return React.createElement(PriceView, { prices: price });
     },
     formatAction: function formatAction(ac, product) {
         return React.createElement(
@@ -95606,6 +95827,8 @@ var ProductService = function () {
                     }
 
                     resolve(msg.body);
+
+                    console.log(ServerEvents.FIND_ALL_PRODUCTS, msg.body);
                 });
             });
         }
@@ -95622,6 +95845,26 @@ var ProductService = function () {
                     }
 
                     resolve(msg.body);
+
+                    console.log(ServerEvents.FIND_PRODUCT, msg.body);
+                });
+            });
+        }
+    }, {
+        key: 'findDecomposed',
+        value: function findDecomposed(id) {
+            return new Promise(function (resolve, reject) {
+                eb.send(ServerEvents.FIND_PRODUCT_DECOMPOSED, id, null, function (err, msg) {
+                    if (!!err || !!msg.failureCode || !!(msg.body || {}).responseCode) {
+                        reject(err || msg);
+
+                        console.log("Error " + ServerEvents.FIND_PRODUCT_DECOMPOSED, err || msg);
+                        return;
+                    }
+
+                    resolve(msg.body);
+
+                    console.log(ServerEvents.FIND_PRODUCT_DECOMPOSED, msg.body);
                 });
             });
         }
@@ -96190,6 +96433,7 @@ module.exports = ProductsUnitWisePriceEditable = React.createClass({
 var ServerEvents = {
     FIND_ALL_PRODUCTS: 'FIND_ALL_PRODUCTS',
     FIND_PRODUCT: 'FIND_PRODUCT',
+    FIND_PRODUCT_DECOMPOSED: 'FIND_PRODUCT_DECOMPOSED',
     CREATE_PRODUCT: 'CREATE_PRODUCT',
     UPDATE_PRODUCT: 'UPDATE_PRODUCT',
     DELETE_PRODUCT: 'DELETE_PRODUCT'
@@ -96224,50 +96468,6 @@ module.exports = SingleProductViewShort = _react2.default.createClass({
         var $this = this;
         var product = $this.props.product;
 
-        product = {
-            id: 1,
-            name: 'Janji',
-            manufacturerPrice: { amount: 5564, unit: { id: 45, name: 'Kg' } },
-            inventories: [{
-                inventory: { id: 1, name: 'In-1' },
-                quantity: 545,
-                available: 545,
-                unit: { id: 1, name: 'Lg' }
-            }, {
-                inventory: { id: 2, name: 'In-1' },
-                quantity: 545,
-                available: 545,
-                unit: { id: 1, name: 'Lg' }
-            }, {
-                inventory: { id: 3, name: 'In-1' },
-                quantity: 545,
-                available: 545,
-                unit: { id: 1, name: 'Lg' }
-            }, {
-                inventory: { id: 4, name: 'In-1' },
-                quantity: 545,
-                available: 545,
-                unit: { id: 1, name: 'Lg' }
-            }, {
-                inventory: { id: 5, name: 'In-1' },
-                quantity: 545,
-                available: 545,
-                unit: { id: 1, name: 'Lg' }
-            }],
-            price: [{
-                id: 1, unit: { id: 1, name: 'U-1' }, amount: 512
-            }, {
-                id: 2,
-                unit: { id: 2, name: 'U-2' },
-                amount: 7552
-            }, {
-                id: 3,
-                unit: { id: 2, name: 'U-2' },
-                amount: 7552
-            }]
-        };
-
-        product.remarks = "REMRLALS";
         return _react2.default.createElement(
             'table',
             { className: 'table table-condensed' },
@@ -96323,7 +96523,7 @@ module.exports = SingleProductViewShort = _react2.default.createClass({
                     _react2.default.createElement(
                         'td',
                         { colSpan: '3', style: { padding: 0 } },
-                        _react2.default.createElement(PriceView, { price: product.price })
+                        _react2.default.createElement(PriceView, { prices: product.prices })
                     )
                 ),
                 _react2.default.createElement(
@@ -96387,17 +96587,38 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var SingleProductViewShort = require('./SingleProductViewShort');
 var ProductsUnitWisePrice = require('./ProductsUnitWisePrice');
 
+var productService = require('./ProductService');
+
+var Uris = require('../Uris');
+
 var ViewProduct;
 module.exports = ViewProduct = _react2.default.createClass({
     displayName: 'ViewProduct',
 
+    getDefaultProps: function getDefaultProps() {
+        return {
+            id: 0
+        };
+    },
     getInitialState: function getInitialState() {
         return {
             product: {}
         };
     },
+    componentDidMount: function componentDidMount() {
+        var $this = this;
+
+        if (!!$this.props.params.id) {
+            productService.find($this.props.params.id).then(function (product) {
+                console.log("PRODUCT_VIEW: ", product);
+                $this.setState({ product: product });
+            });
+        }
+    },
+    componentWillUnmount: function componentWillUnmount() {},
     render: function render() {
         var $this = this;
+        var id = $this.props.params.id;
         return _react2.default.createElement(
             'div',
             { className: 'row' },
@@ -96429,8 +96650,9 @@ module.exports = ViewProduct = _react2.default.createClass({
                                     'div',
                                     { className: 'btn-group btn-group-justified' },
                                     _react2.default.createElement(
-                                        'span',
-                                        { className: 'btn btn-primary',
+                                        'a',
+                                        { href: Uris.toAbsoluteUri(Uris.PRODUCT.EDIT, { id: id }),
+                                            className: 'btn btn-primary',
                                             onClick: $this.createProduct },
                                         'Edit'
                                     )
@@ -96449,7 +96671,7 @@ module.exports = ViewProduct = _react2.default.createClass({
     }
 });
 
-},{"./ProductsUnitWisePrice":860,"./SingleProductViewShort":863,"react":784}],865:[function(require,module,exports){
+},{"../Uris":170,"./ProductService":856,"./ProductsUnitWisePrice":860,"./SingleProductViewShort":863,"react":784}],865:[function(require,module,exports){
 (function (global){
 /**
  * Stream.js v1.6.4

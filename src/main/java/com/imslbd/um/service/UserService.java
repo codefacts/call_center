@@ -257,7 +257,9 @@ public class UserService {
             .otherwise(
                 rsp -> {
                     JsonObject user = (JsonObject) rsp;
-                    WebUtils.create(Tables.users.name(), user, jdbcClient)
+                    WebUtils
+                        .create(Tables.users.name(), user, jdbcClient)
+                        .map(updateResult -> updateResult.getKeys().getLong(0))
                         .then(message::reply)
                         .error(e -> ExceptionUtil.fail(message, e));
                 })
@@ -298,6 +300,7 @@ public class UserService {
                 rsp -> {
                     JsonObject user = (JsonObject) rsp;
                     WebUtils.update(Tables.users.name(), user, user.getLong(User.ID, 0L), jdbcClient)
+                        .map(updateResult -> updateResult.getKeys().getLong(0))
                         .then(message::reply)
                         .error(e -> ExceptionUtil.fail(message, e));
                 })

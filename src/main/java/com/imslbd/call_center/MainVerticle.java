@@ -125,6 +125,7 @@ final public class MainVerticle extends AbstractVerticle {
 
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_PRODUCTS))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_PRODUCT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_PRODUCT_DECOMPOSED))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_PRODUCT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_PRODUCT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_PRODUCT))
@@ -228,6 +229,7 @@ final public class MainVerticle extends AbstractVerticle {
                 ProductService productService = new ProductService(jdbcClientUm, names, priceNames, unitFields, Util.or(maxId, 1L), vertx);
                 eventBus.consumer(UmEvents.FIND_ALL_PRODUCTS, productService::findAll);
                 eventBus.consumer(UmEvents.FIND_PRODUCT, productService::find);
+                eventBus.consumer(UmEvents.FIND_PRODUCT_DECOMPOSED, productService::findDecomposed);
                 eventBus.consumer(UmEvents.CREATE_PRODUCT, productService::create);
                 eventBus.consumer(UmEvents.UPDATE_PRODUCT, productService::update);
                 eventBus.consumer(UmEvents.DELETE_PRODUCT, productService::delete);
