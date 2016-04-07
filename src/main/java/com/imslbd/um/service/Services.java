@@ -72,8 +72,8 @@ public class Services {
             .put(4, Converters::toLong)
             .put(12, s -> s)
             .put(-1, s -> s)
-            .put(91, Converters::toDate)
-            .put(93, Converters::toDate)
+            .put(91, Converters::toMySqlDateString)
+            .put(93, Converters::toMySqlDateString)
             .put(8, Converters::toDouble)
         ;
 

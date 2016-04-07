@@ -208,6 +208,7 @@ public class UnitService {
     public void deleteUnit(Message<Number> message) {
         final long id = message.body().longValue();
         WebUtils.delete(Tables.units.name(), id, jdbcClient)
+            .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
             .then(message::reply)
             .error(e -> ExceptionUtil.fail(message, e))
         ;

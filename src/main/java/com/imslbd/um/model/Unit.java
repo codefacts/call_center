@@ -10,5 +10,4 @@ public class Unit {
     public static final String REMARKS = "remarks";
     public static final String CREATED_BY = "createdBy";
     public static final String UPDATED_BY = "updatedBy";
-    public static final String PRODUCT_ID = "productId";
 }

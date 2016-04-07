@@ -4,10 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.imslbd.call_center.MyApp;
-import com.imslbd.um.Tables;
-import com.imslbd.um.Um;
-import com.imslbd.um.UmErrorCodes;
-import com.imslbd.um.UmUtils;
+import com.imslbd.um.*;
+import com.imslbd.um.model.Inventory;
 import com.imslbd.um.model.Unit;
 import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
@@ -32,6 +30,8 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.*;
+import io.vertx.ext.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,41 +44,50 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.imslbd.um.service.Services.DATA;
+import static com.imslbd.um.service.Services.converters;
+
 /**
  * Created by shahadat on 3/6/16.
  */
-public class UserService {
-    public static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
+public class InventoryService {
+    public static final Logger LOGGER = LoggerFactory.getLogger(InventoryService.class);
     private static final java.lang.String SIZE = "size";
     private static final String PAGE = "page";
     private static final String HEADERS = "headers";
     private static final String PAGINATION = "pagination";
     private static final String DATA = "data";
-    private static final Integer DEFAULT_PAGE_SIZE = 100;
+    private static final Integer DEFAULT_PAGE_SIZE = 1000;
     private static final String VALIDATION_ERROR = "validationError";
+    private static final String TABLE_NAME = Tables.inventories.name();
+    private static final String QUANTITY = "quantity";
 
     private final Vertx vertx;
     private final JDBCClient jdbcClient;
     private final RemoveNullsTransformation removeNullsTransformation;
     private final DefaultValueTransformation defaultValueTransformationParams = new DefaultValueTransformation(Util.EMPTY_JSON_OBJECT);
 
-    private static final String USER_NOT_FOUND = "USER_NOT_FOUND";
+    private static final String INVENTORY_NOT_FOUND = "INVENTORY_NOT_FOUND";
 
     private final IncludeExcludeTransformation includeExcludeTransformation;
+    private final IncludeExcludeTransformation productIncludeExcludeTransformation;
     private final ConverterTransformation converterTransformation;
+    private final ConverterTransformation productConverterTransformation;
     private final DefaultValueTransformation defaultValueTransformation;
+    private final DefaultValueTransformation productDefaultValueTransformation;
 
     private final JsonTransformationPipeline transformationPipeline;
+    private final JsonTransformationPipeline productTransformationPipeline;
+
     private final ValidationPipeline<JsonObject> validationPipeline;
 
-    public UserService(JDBCClient jdbcClient, String[] fields, Vertx vertx) {
+    public InventoryService(JDBCClient jdbcClient, String[] fields, String[] inventoryProductFields, Vertx vertx) {
         this.vertx = vertx;
         this.jdbcClient = jdbcClient;
 
         removeNullsTransformation = new RemoveNullsTransformation();
-        includeExcludeTransformation = new IncludeExcludeTransformation(
-            ImmutableSet.copyOf(Arrays.asList(fields)), null);
-        converterTransformation = new ConverterTransformation(converters(fields));
+        includeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields), null);
+        converterTransformation = new ConverterTransformation(converters(fields, TABLE_NAME));
 
         defaultValueTransformation = new DefaultValueTransformation(
             new JsonObject()
@@ -88,71 +97,44 @@ public class UserService {
 
         transformationPipeline = new JsonTransformationPipeline(
             ImmutableList.of(
-                removeNullsTransformation,
                 includeExcludeTransformation,
                 converterTransformation,
-                defaultValueTransformation
+                defaultValueTransformation,
+                removeNullsTransformation
             )
         );
 
         validationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(validators()));
+
+
+        productConverterTransformation = new ConverterTransformation(converters(inventoryProductFields, Tables.inventoryProducts.name()));
+        productIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(inventoryProductFields), null);
+        productDefaultValueTransformation = new DefaultValueTransformation(
+            new JsonObject().put(InventoryProduct.AVAILABLE, 0)
+        );
+
+        productTransformationPipeline = new JsonTransformationPipeline(ImmutableList.of(
+            productIncludeExcludeTransformation,
+            productConverterTransformation,
+            productDefaultValueTransformation,
+            removeNullsTransformation
+        ));
     }
 
     private List<Validator<JsonObject>> validators() {
         List<Validator<JsonObject>> validators = new ArrayList<>();
         JsonObjectValidatorComposer validatorComposer = new JsonObjectValidatorComposer(validators, Um.messageBundle)
-            .field(User.USER_ID,
+            .field(Inventory.ID,
                 fieldValidatorComposer -> fieldValidatorComposer
-                    .stringType()
-                    .notNullEmptyOrWhiteSpace())
-            .field(User.USERNAME,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType())
-            .field(User.PASSWORD,
+                    .numberType().nonZero().positive())
+            .field(Inventory.NAME,
                 fieldValidatorComposer -> fieldValidatorComposer
                     .notNullEmptyOrWhiteSpace()
                     .stringType())
-            .field(User.NAME,
+            .field(Inventory.REMARKS,
                 fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType())
-            .field(User.PHONE,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
                     .stringType());
         return validatorComposer.getValidatorList();
-    }
-
-    private ImmutableMap<String, Function<Object, Object>> converters(String[] fields) {
-        JsonObject db = MyApp.loadConfig().getJsonObject(Services.DATABASE);
-        String url = db.getString("url");
-        String user = db.getString("user");
-        String password = db.getString("password");
-
-        ImmutableMap.Builder<String, Function<Object, Object>> builder = ImmutableMap.builder();
-        try {
-            try (Connection connection = DriverManager.getConnection(url, user, password)) {
-                Statement statement = connection.createStatement();
-                statement.execute("select * from " + Tables.users.name());
-                ResultSet rs = statement.getResultSet();
-                ResultSetMetaData metaData = rs.getMetaData();
-
-                int columnCount = metaData.getColumnCount();
-                for (int i = 0; i < columnCount; i++) {
-                    int columnType = metaData.getColumnType(i + 1);
-                    Function<Object, Object> converter = Services.TYPE_CONVERTERS.get(columnType);
-                    Objects.requireNonNull(converter, "Type Converter can't be null for Type: " +
-                        "[" + columnType + ": " + Services.JDBC_TYPES.get(columnType) + "]");
-                    builder.put(fields[i], converter);
-                    System.out.println(columnType + ": " + Services.JDBC_TYPES.get(columnType));
-                }
-            }
-        } catch (SQLException e) {
-            LOGGER.error("Error connecting to database through jdbc", e);
-        }
-
-        return builder.build();
     }
 
     public void findAll(Message<JsonObject> message) {
@@ -162,7 +144,7 @@ public class UserService {
             .then(json -> {
                 int page = json.getInteger(PAGE, 1);
                 int size = json.getInteger(SIZE, DEFAULT_PAGE_SIZE);
-                String from = "from users";
+                String from = "from " + TABLE_NAME;
 
                 Promises.when(
                     WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
@@ -190,32 +172,29 @@ public class UserService {
 
     public void find(Message<Object> message) {
         Promises
-            .callable(() -> message.body())
+            .callable(message::body)
             .then(
-                id -> WebUtils.query("select * from users where id = " + id, jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? USER_NOT_FOUND : Decision.OTHERWISE)
-                    .on(USER_NOT_FOUND,
+                id -> WebUtils.query("select * from " + TABLE_NAME + " where id = " + id, jdbcClient)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? INVENTORY_NOT_FOUND : Decision.OTHERWISE)
+                    .on(INVENTORY_NOT_FOUND,
                         rs -> {
                             message.reply(
                                 new JsonObject()
-                                    .put(Services.RESPONSE_CODE, UmErrorCodes.USER_NOT_FOUND.code())
-                                    .put(Services.MESSAGE_CODE, UmErrorCodes.USER_NOT_FOUND.messageCode())
+                                    .put(Services.RESPONSE_CODE, UmErrorCodes.INVENTORY_NOT_FOUND.code())
+                                    .put(Services.MESSAGE_CODE, UmErrorCodes.INVENTORY_NOT_FOUND.messageCode())
                                     .put(Services.MESSAGE,
                                         Um.messageBundle.translate(
-                                            UmErrorCodes.USER_NOT_FOUND.messageCode(),
+                                            UmErrorCodes.INVENTORY_NOT_FOUND.messageCode(),
                                             new JsonObject()
-                                                .put(User.ID, id))),
+                                                .put(Inventory.ID, id))),
                                 new DeliveryOptions()
-                                    .addHeader(Services.RESPONSE_CODE, Util.toString(UmErrorCodes.USER_NOT_FOUND.code()))
+                                    .addHeader(Services.RESPONSE_CODE,
+                                        Util.toString(UmErrorCodes.INVENTORY_NOT_FOUND.code()))
                             );
                         })
                     .otherwise(
                         rs -> Promises.from(rs)
                             .map(rset -> rset.getRows().get(0))
-                            .map(user -> {
-                                user.remove(User.PASSWORD);
-                                return user;
-                            })
                             .then(message::reply))
                     .error(e -> ExceptionUtil.fail(message, e))
             )
@@ -227,9 +206,11 @@ public class UserService {
         System.out.println();
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
-                user -> {
-                    List<ValidationResult> validationResults = validationPipeline.validate(user);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
+                inventory -> {
+                    List<ValidationResult> validationResults = validationPipeline.validate(inventory);
+                    return validationResults != null
+                        ? Decision.of(VALIDATION_ERROR, validationResults)
+                        : Decision.of(Decision.OTHERWISE, inventory);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -256,9 +237,9 @@ public class UserService {
                 })
             .otherwise(
                 rsp -> {
-                    JsonObject user = (JsonObject) rsp;
+                    JsonObject inventory = (JsonObject) rsp;
                     WebUtils
-                        .create(Tables.users.name(), user, jdbcClient)
+                        .create(TABLE_NAME, inventory, jdbcClient)
                         .map(updateResult -> updateResult.getKeys().getLong(0))
                         .then(message::reply)
                         .error(e -> ExceptionUtil.fail(message, e));
@@ -270,9 +251,9 @@ public class UserService {
     public void update(Message<JsonObject> message) {
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
-                user -> {
-                    List<ValidationResult> validationResults = validationPipeline.validate(user);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
+                inventory -> {
+                    List<ValidationResult> validationResults = validationPipeline.validate(inventory);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, inventory);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -298,10 +279,11 @@ public class UserService {
                 })
             .otherwise(
                 rsp -> {
-                    JsonObject user = (JsonObject) rsp;
-                    final Long id = user.getLong(User.ID, 0L);
-                    WebUtils.update(Tables.users.name(), user, id, jdbcClient)
-                        .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
+                    JsonObject inventory = (JsonObject) rsp;
+                    WebUtils.update(
+                        TABLE_NAME, inventory,
+                        inventory.getLong(Inventory.ID, 0L), jdbcClient)
+                        .map(updateResult -> inventory.getValue(Inventory.ID))
                         .then(message::reply)
                         .error(e -> ExceptionUtil.fail(message, e));
                 })
@@ -310,7 +292,7 @@ public class UserService {
 
     public void delete(Message<Object> message) {
         Promises.callable(() -> Converters.toLong(message.body()))
-            .mapToPromise(id -> WebUtils.delete(Tables.users.name(), id, jdbcClient)
+            .mapToPromise(id -> WebUtils.delete(TABLE_NAME, id, jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                 .then(message::reply))
             .error(e ->
@@ -323,5 +305,98 @@ public class UserService {
         String substring = (secureRandom.nextLong() + "").substring(9);
         System.out.println(substring);
         System.out.println(substring.length());
+    }
+
+    public void findAllProducts(Message<Object> message) {
+        WebUtils.query("select * from " + Tables.inventoryProducts + " " +
+            "where inventoryId = " + message.body(), jdbcClient)
+            .map(ResultSet::getRows)
+            .then(list -> message.reply(
+                new JsonObject().put(DATA, list)))
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void insertProduct(Message<JsonObject> message) {
+
+        final JsonObject inventoryProduct = productTransformationPipeline.transform(message.body());
+
+        WebUtils
+            .create(Tables.inventoryProducts.name(), inventoryProduct, jdbcClient)
+            .map(updateResult -> updateResult.getKeys().getValue(0))
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void deleteProduct(Message<Object> message) {
+        Promises.from(message.body())
+            .mapToPromise(id -> WebUtils.delete(Tables.inventoryProducts.name(), id, jdbcClient)
+                .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0))
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void addProduct(Message<JsonObject> message) {
+        Promises
+            .callable(() -> {
+                final JsonObject body = message.body();
+                return
+                    new JsonObject()
+                        .put(InventoryProduct.ID, Converters.toLong(body.getValue(InventoryProduct.ID)))
+                        .put(QUANTITY, Converters.toDouble(body.getValue(QUANTITY)))
+                    ;
+            })
+            .mapToPromise(req -> WebUtils.update(
+                "UPDATE `" + Tables.inventoryProducts + "` " +
+                    "SET `quantity`= `quantity` + " + req.getDouble(QUANTITY) + " " +
+                    "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
+                .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void removeProduct(Message<JsonObject> message) {
+        Promises
+            .callable(() -> {
+                final JsonObject body = message.body();
+                return
+                    new JsonObject()
+                        .put(InventoryProduct.ID, Converters.toLong(body.getValue(InventoryProduct.ID)))
+                        .put(QUANTITY, Converters.toDouble(body.getValue(QUANTITY)))
+                    ;
+            })
+            .mapToPromise(req -> WebUtils.update(
+                "UPDATE `" + Tables.inventoryProducts + "` " +
+                    "SET `quantity`= `quantity` - " + req.getDouble(QUANTITY) + " " +
+                    "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
+                .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void editProductQuantity(Message<JsonObject> message) {
+        Promises
+            .callable(() -> {
+                final JsonObject body = message.body();
+                return
+                    new JsonObject()
+                        .put(InventoryProduct.ID, Converters.toLong(body.getValue(InventoryProduct.ID)))
+                        .put(QUANTITY, Converters.toDouble(body.getValue(QUANTITY)))
+                        .put(InventoryProduct.UNIT_ID, Converters.toLong(body.getValue(InventoryProduct.UNIT_ID)))
+                    ;
+            })
+            .mapToPromise(req -> WebUtils.update(
+                "UPDATE `" + Tables.inventoryProducts + "` " +
+                    "SET `quantity`= " + req.getDouble(QUANTITY) + ", " +
+                    "`unitId`= " + req.getValue(InventoryProduct.UNIT_ID) + " " +
+                    "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
+                .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
     }
 }

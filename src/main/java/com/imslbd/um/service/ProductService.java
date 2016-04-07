@@ -27,6 +27,7 @@ import io.crm.promise.intfs.MapToHandler;
 import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
 import io.crm.util.touple.MutableTpl2;
+import io.crm.util.touple.immutable.Tpls;
 import io.crm.web.util.Converters;
 import io.crm.web.util.Pagination;
 import io.crm.web.util.WebUtils;
@@ -36,17 +37,19 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
+import org.jooq.lambda.Seq;
+import org.jooq.lambda.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static com.imslbd.um.service.Services.DATA;
 import static com.imslbd.um.service.Services.converters;
 
 /**
@@ -61,7 +64,7 @@ public class ProductService {
     private static final String HEADERS = "headers";
     private static final String PAGINATION = "pagination";
     private static final String DATA = "data";
-    private static final Integer DEFAULT_PAGE_SIZE = 100;
+    private static final Integer DEFAULT_PAGE_SIZE = 1000;
     private static final String VALIDATION_ERROR = "validationError";
     private static final String TABLE_NAME = Tables.products.name();
     private static final String PRODUCT_UNIT_PRICES_TABLE = "productUnitPrices";
@@ -162,26 +165,114 @@ public class ProductService {
     }
 
     public void findAll(Message<JsonObject> message) {
+
+        final String pSel = productFields.stream().map(field -> "p." + field).collect(Collectors.joining(", "));
+        final String prSel = productUnitPriceFields.stream().map(field -> "up." + field).collect(Collectors.joining(", "));
+        final String uSel = unitFields.stream().map(field -> "u." + field).collect(Collectors.joining(", "));
+        final String uSel2 = unitFields.stream().map(field -> "u2." + field).collect(Collectors.joining(", "));
+
         Promises.from(message.body())
             .map(defaultValueTransformationParams::transform)
             .map(removeNullsTransformation::transform)
             .then(json -> {
                 int page = json.getInteger(PAGE, 1);
                 int size = json.getInteger(SIZE, DEFAULT_PAGE_SIZE);
-                String from = "from " + TABLE_NAME;
+
+                String from = "from " + TABLE_NAME + " p " +
+                    "join " + Tables.productUnitPrices + " up on up.productId = p.id " +
+                    "join " + Tables.units + " u on u.id = up.unitId " +
+                    "join " + Tables.units + " u2 on u2.id = p.manufacturerPriceUnitId ";
+                String groupBy = "group by p.id, up.productId, up.unitId";
 
                 Promises.when(
                     WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
                         .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
                     WebUtils.query(
-                        "select * " + from + " "
-                            + UmUtils.limitOffset(page, size), jdbcClient)
-                        .map(resultSet3 -> new JsonObject()
-                            .put(HEADERS, resultSet3.getColumnNames()
-                                .stream()
-                                .map(WebUtils::describeField)
-                                .collect(Collectors.toList()))
-                            .put(DATA, resultSet3.getRows())))
+                        "select " + pSel + ", " + prSel + ", " + uSel + ", " + uSel2 + " " + from + " " + groupBy + " " +
+                            UmUtils.limitOffset(page, size), jdbcClient)
+                        .map(resultSet3 ->
+                            Tpls.of(new JsonObject()
+                                .put(HEADERS, resultSet3.getColumnNames()
+                                    .stream()
+                                    .map(WebUtils::describeField)
+                                    .collect(Collectors.toList())), resultSet3.getResults()))
+                        .map(tpl21 -> tpl21.apply(
+                            (jsonObject, list) -> {
+
+                                final int priceLimit = productFields.size() + productUnitPriceFields.size();
+                                final int priceUnitLimit = priceLimit + unitFields.size();
+                                final int unitLimit = priceUnitLimit + unitFields.size();
+
+                                final int idIndex = productFields.indexOf(Product.ID);
+                                final int priceIdIndex = productFields.size() + productUnitPriceFields.indexOf(ProductUnitPrice.ID);
+                                final int unitIdIndex = priceLimit + unitFields.indexOf(Unit.ID);
+                                final int manufacturerUnitIdIndex = priceUnitLimit + unitFields.size();
+
+                                HashMap<Object, JsonObject> productsMap = new HashMap<>();
+                                HashMap<Object, JsonObject> priceMap = new HashMap<>();
+
+                                list.forEach(jsonArray -> {
+
+                                    final Object id = jsonArray.getValue(idIndex);
+
+                                    JsonObject product = productsMap.get(id);
+
+                                    if (product == null) {
+                                        product = new JsonObject();
+                                        productsMap.put(id, product);
+
+                                        for (int i = 0; i < productFields.size(); i++) {
+                                            product.put(productFields.get(i), jsonArray.getValue(i));
+                                        }
+
+                                        Double price = product.getDouble(Product.MANUFACTURER_PRICE);
+                                        JsonObject unit = new JsonObject();
+                                        for (int i = priceUnitLimit; i < unitLimit; i++) {
+                                            unit.put(unitFields.get(i - priceUnitLimit), jsonArray.getValue(i));
+                                        }
+
+                                        product.put(Product.MANUFACTURER_PRICE,
+                                            new JsonObject()
+                                                .put(ProductUnitPrice.AMOUNT, price)
+                                                .put(ProductUnitPrice.UNIT, unit));
+
+                                        product.put(Product.PRICES, new ArrayList<>());
+
+                                    }
+
+                                    final Object productId = jsonArray.getValue(priceIdIndex);
+                                    JsonObject price = priceMap.get(productId);
+                                    if (price == null) {
+                                        price = new JsonObject();
+                                        priceMap.put(productId, price);
+
+                                        for (int i = productFields.size(); i < priceLimit; i++) {
+                                            price.put(productUnitPriceFields.get(i - productFields.size()), jsonArray.getValue(i));
+                                        }
+
+                                        price.put(ProductUnitPrice.AMOUNT, price.getValue(ProductUnitPrice.PRICE));
+
+
+                                        final JsonObject unit = new JsonObject();
+
+                                        for (int i = priceLimit; i < priceUnitLimit; i++) {
+                                            unit.put(unitFields.get(i - priceLimit), jsonArray.getValue(i));
+                                        }
+
+                                        price.put(ProductUnitPrice.UNIT, unit);
+
+                                    }
+                                });
+
+                                priceMap.forEach((id, price) -> {
+                                    final Object productId = price.getValue(ProductUnitPrice.PRODUCT_ID);
+                                    productsMap.get(productId).getJsonArray(Product.PRICES).add(price);
+                                });
+
+                                return
+                                    jsonObject
+                                        .put(DATA, productsMap.values().stream().collect(Collectors.toList()));
+                            })))
                     .map(tpl2 -> tpl2.apply(
                         (totalCount, js) ->
                             js.put(PAGINATION,
@@ -203,11 +294,12 @@ public class ProductService {
         Promises
             .callable(message::body)
             .then(
-                id -> WebUtils.query("select " + pSel + ", " + prSel + ", " + uSel + " " +
-                    "from " + TABLE_NAME + " p " +
-                    "join " + Tables.productUnitPrices + " up on up.productId = p.id " +
-                    "join " + Tables.units + " u on u.id = up.unitId " +
-                    "where p.id = " + id, jdbcClient)
+                id -> WebUtils.query(
+                    "select " + pSel + ", " + prSel + ", " + uSel + " " +
+                        "from " + TABLE_NAME + " p " +
+                        "join " + Tables.productUnitPrices + " up on up.productId = p.id " +
+                        "join " + Tables.units + " u on u.id = up.unitId " +
+                        "where p.id = " + id, jdbcClient)
                     .decide(resultSet -> resultSet.getNumRows() < 1 ? PRODUCT_NOT_FOUND : Decision.OTHERWISE)
                     .on(PRODUCT_NOT_FOUND,
                         rs ->
@@ -348,7 +440,7 @@ public class ProductService {
                                                 .map(unitIncludeExcludeTransformation::transform)
                                                 .map(js ->
                                                     js
-                                                        .put(Unit.PRODUCT_ID, newId)
+                                                        .put(ProductUnitPrice.PRODUCT_ID, newId)
                                                         .put(Unit.CREATED_BY, 0)
                                                         .put(Unit.UPDATED_BY, 0))
                                                 .collect(Collectors.toList()), con)
@@ -449,7 +541,7 @@ public class ProductService {
                                                 .map(unitIncludeExcludeTransformation::transform)
                                                 .map(js ->
                                                     js
-                                                        .put(Unit.PRODUCT_ID, productId)
+                                                        .put(ProductUnitPrice.PRODUCT_ID, productId)
                                                         .put(Unit.CREATED_BY, 0)
                                                         .put(Unit.UPDATED_BY, 0))
                                                 .collect(Collectors.toList()), con)
@@ -481,6 +573,7 @@ public class ProductService {
     public void delete(Message<Object> message) {
         Promises.callable(() -> Converters.toLong(message.body()))
             .mapToPromise(id -> WebUtils.delete(TABLE_NAME, id, jdbcClient)
+                .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                 .then(message::reply))
             .error(e ->
                 ExceptionUtil.fail(message, e))
@@ -553,5 +646,59 @@ public class ProductService {
             .error(e -> ExceptionUtil.fail(message, e))
         ;
 
+    }
+
+    public void findAllDecomposed(Message<JsonObject> message) {
+        WebUtils.query("select * from " + TABLE_NAME, jdbcClient)
+            .map(ResultSet::getRows)
+            .then(
+                list ->
+                    message.reply(
+                        new JsonObject()
+                            .put(DATA, list)
+                    ))
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void unitWisePrice(Message<JsonObject> message) {
+        try {
+            final String[] fields = new String[]{"productId", "unitId", "price"};
+
+            final String fieldStr = String.join(", ", fields);
+
+            WebUtils.query(
+                "select " + fieldStr + " from " + Tables.productUnitPrices +
+                    " group by " + fieldStr, jdbcClient)
+                .map(rs -> rs.getResults())
+                .map(jsonArrays -> {
+
+                    final JsonObject map = new JsonObject();
+
+                    jsonArrays.forEach(jsonArray -> {
+
+                        final String productId = jsonArray.getValue(0).toString();
+                        String unitId = jsonArray.getValue(1).toString();
+                        Double price = jsonArray.getDouble(2);
+
+                        JsonObject unitJson = map.getJsonObject(productId);
+
+                        if (unitJson == null) {
+                            unitJson = new JsonObject();
+                            map.put(productId, unitJson);
+                        }
+
+                        unitJson.put(unitId, price);
+                    });
+
+                    return map;
+                })
+                .then(message::reply)
+                .error(e -> ExceptionUtil.fail(message, e))
+            ;
+        } catch (Exception ex) {
+            ExceptionUtil.fail(message, ex);
+            LOGGER.error("ERROR IN unitWisePrice", ex);
+        }
     }
 }

@@ -7,10 +7,10 @@ import com.imslbd.um.UmEvents;
 import com.imslbd.um.controller.UmUris;
 import com.imslbd.um.controller.UserController;
 import com.imslbd.um.model.Product;
-import com.imslbd.um.service.ProductService;
-import com.imslbd.um.service.UnitService;
-import com.imslbd.um.service.UserService;
+import com.imslbd.um.model.Sell;
+import com.imslbd.um.service.*;
 import io.crm.QC;
+import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformation;
 import io.crm.promise.Promises;
 import io.crm.util.Util;
 import io.crm.web.ApiEvents;
@@ -124,11 +124,32 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_UNIT))
 
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_PRODUCTS))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_PRODUCTS_DECOMPOSED))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_PRODUCT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_PRODUCT_DECOMPOSED))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.PRODUCTS_UNIT_WISE_PRICE))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_PRODUCT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_PRODUCT))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_PRODUCT))
+
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_INVENTORIES))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_INVENTORY_PRODUCTS))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_INVENTORY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_INVENTORY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_INVENTORY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_INVENTORY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.INSERT_INVENTORY_PRODUCT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_INVENTORY_PRODUCT))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.ADD_PRODUCT_TO_INVENTORY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.REMOVE_PRODUCT_FROM_INVENTORY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.EDIT_INVENTORY_PRODUCT_QUANTITY))
+
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_SELLS))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_SELL))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_SELL_DECOMPOSED))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_SELL))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_SELL))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_SELL))
         ;
 
         bridgeOptions
@@ -228,15 +249,90 @@ final public class MainVerticle extends AbstractVerticle {
             .then(tpl2 -> tpl2.accept((names, priceNames, unitFields, maxId) -> {
                 ProductService productService = new ProductService(jdbcClientUm, names, priceNames, unitFields, Util.or(maxId, 1L), vertx);
                 eventBus.consumer(UmEvents.FIND_ALL_PRODUCTS, productService::findAll);
+                eventBus.consumer(UmEvents.FIND_ALL_PRODUCTS_DECOMPOSED, productService::findAllDecomposed);
                 eventBus.consumer(UmEvents.FIND_PRODUCT, productService::find);
                 eventBus.consumer(UmEvents.FIND_PRODUCT_DECOMPOSED, productService::findDecomposed);
+                eventBus.consumer(UmEvents.PRODUCTS_UNIT_WISE_PRICE, productService::unitWisePrice);
                 eventBus.consumer(UmEvents.CREATE_PRODUCT, productService::create);
                 eventBus.consumer(UmEvents.UPDATE_PRODUCT, productService::update);
                 eventBus.consumer(UmEvents.DELETE_PRODUCT, productService::delete);
             }))
-            .error(e -> {
-                LOGGER.error("Error creating UnitService", e);
-            })
+            .error(e -> LOGGER.error("Error creating UnitService", e))
+        ;
+
+        Promises
+            .when(
+                WebUtils.query("select * from " + Tables.sells + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select * from " + Tables.sellUnits + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select * from " + Tables.products + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select * from " + Tables.units + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select max(" + Sell.ID + ") as maxId, max(transactionId) as maxTransactionId, max(orderId) as maxOrderId from " + Tables.sells
+                    + " where 1", jdbcClientUm)
+                    .map(rs -> rs.getRows().get(0))
+                    .map(new RemoveNullsTransformation()::transform)
+            )
+            .then(tpl2 -> tpl2.accept(
+                (fields, sellUnitFields, productFields, unitFields, maxId) -> {
+                    SellService sellService = new SellService(jdbcClientUm, fields, sellUnitFields, productFields, unitFields,
+                        maxId.getLong("maxId", 0L),
+                        maxId.getLong("maxTransactionId", 0L),
+                        maxId.getLong("maxOrderId", 0L), vertx);
+                    eventBus.consumer(UmEvents.FIND_ALL_SELLS, sellService::findAll);
+                    eventBus.consumer(UmEvents.FIND_SELL, sellService::find);
+                    eventBus.consumer(UmEvents.FIND_SELL_DECOMPOSED, sellService::findDecomposed);
+                    eventBus.consumer(UmEvents.CREATE_SELL, sellService::create);
+                    eventBus.consumer(UmEvents.UPDATE_SELL, sellService::update);
+                    eventBus.consumer(UmEvents.DELETE_SELL, sellService::delete);
+                }))
+            .error(e -> LOGGER.error("Error creating UnitService", e))
+        ;
+
+        Promises
+            .when(
+                WebUtils.query("select * from " + Tables.inventories + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    }),
+                WebUtils.query("select * from " + Tables.inventoryProducts + " where id < 0", jdbcClientUm)
+                    .map(rs -> {
+                        String[] colNames = new String[rs.getNumColumns()];
+                        return rs.getColumnNames().toArray(colNames);
+                    })
+            )
+            .then(tpl2 -> tpl2.accept(
+                (fields, inventoryProductFields) -> {
+                    InventoryService inventoryService = new InventoryService(jdbcClientUm, fields,
+                        inventoryProductFields, vertx);
+                    eventBus.consumer(UmEvents.FIND_ALL_INVENTORIES, inventoryService::findAll);
+                    eventBus.consumer(UmEvents.FIND_ALL_INVENTORY_PRODUCTS, inventoryService::findAllProducts);
+                    eventBus.consumer(UmEvents.FIND_INVENTORY, inventoryService::find);
+                    eventBus.consumer(UmEvents.CREATE_INVENTORY, inventoryService::create);
+                    eventBus.consumer(UmEvents.UPDATE_INVENTORY, inventoryService::update);
+                    eventBus.consumer(UmEvents.DELETE_INVENTORY, inventoryService::delete);
+                    eventBus.consumer(UmEvents.INSERT_INVENTORY_PRODUCT, inventoryService::insertProduct);
+                    eventBus.consumer(UmEvents.DELETE_INVENTORY_PRODUCT, inventoryService::deleteProduct);
+                    eventBus.consumer(UmEvents.ADD_PRODUCT_TO_INVENTORY, inventoryService::addProduct);
+                    eventBus.consumer(UmEvents.REMOVE_PRODUCT_FROM_INVENTORY, inventoryService::removeProduct);
+                    eventBus.consumer(UmEvents.EDIT_INVENTORY_PRODUCT_QUANTITY, inventoryService::editProductQuantity);
+                }))
+            .error(e -> LOGGER.error("Error creating UnitService", e))
         ;
 
         WebUtils.query("select * from " + Tables.users + " where id < 0", jdbcClientUm)
