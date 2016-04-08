@@ -31,6 +31,8 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,10 +41,14 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static com.imslbd.um.UmUtils.limitOffset;
+import static com.imslbd.um.service.Services.DATA;
 import static com.imslbd.um.service.Services.converters;
 
 /**
@@ -55,7 +61,7 @@ public class SellService {
     private static final String HEADERS = "headers";
     private static final String PAGINATION = "pagination";
     private static final String DATA = "data";
-    private static final Integer DEFAULT_PAGE_SIZE = 1000;
+    private static final Integer DEFAULT_PAGE_SIZE = 100;
     private static final String VALIDATION_ERROR = "validationError";
     private static final String TABLE_NAME = Tables.sells.name();
     private static final String QUANTITY = "quantity";
@@ -173,51 +179,105 @@ public class SellService {
     }
 
     public void findAll(Message<JsonObject> message) {
-        Promises.from(message.body())
-            .map(defaultValueTransformationParams::transform)
-            .map(removeNullsTransformation::transform)
-            .then(json -> {
-                int page = json.getInteger(PAGE, 1);
-                int size = json.getInteger(SIZE, DEFAULT_PAGE_SIZE);
-                String from = "from " + TABLE_NAME;
 
-                Promises.when(
-                    WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
-                        .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
+        try {
+
+
+            final JsonObject params = message.body() == null
+                ? new JsonObject() : removeNullsTransformation.transform(message.body());
+            final int page = Converters.toInt(params.getValue(Pagination.PAGE, 1));
+            final int size = Converters.toInt(params.getValue(Pagination.SIZE, DEFAULT_PAGE_SIZE));
+
+            final String from = "from " + TABLE_NAME + " s " +
+                "join sellUnits su on su.sellId = s.id " +
+                "join products p on su.productId = p.id " +
+                "join units u on su.unitId = u.id";
+
+            Promises
+                .when(
                     WebUtils.query(
-                        "select * " + from + " "
-                            + UmUtils.limitOffset(page, size), jdbcClient)
-                        .map(resultSet3 -> new JsonObject()
-                            .put(HEADERS, resultSet3.getColumnNames()
-                                .stream()
-                                .map(WebUtils::describeField)
-                                .collect(Collectors.toList()))
-                            .put(DATA, resultSet3.getRows())))
-                    .map(tpl2 -> tpl2.apply(
-                        (totalCount, js) ->
-                            js.put(PAGINATION,
-                                new Pagination(page, size, totalCount).toJson())))
-                    .then(message::reply)
-                    .error(e -> ExceptionUtil.fail(message, e))
-                ;
-            })
-            .error(e -> ExceptionUtil.fail(message, e))
-        ;
+                        "select " + sellSelect() + " " + from + " " +
+                            "group by s.id, su.id " + limitOffset(page, size), jdbcClient).map(ResultSet::getResults),
+                    WebUtils.query(
+                        "select count(*) " + from, jdbcClient).map(resultSet1 -> resultSet1.getResults().get(0).getLong(0)))
+                .map(val -> val.apply(
+                    (jsonArrayList, total) -> {
+
+                        final int idIndex = Arrays.asList(fields).indexOf(Sell.ID);
+
+                        final ImmutableList.Builder<JsonObject> objectBuilder = ImmutableList.builder();
+
+                        jsonArrayList.stream().collect(Collectors.groupingBy(jsa -> jsa.getValue(idIndex)))
+                            .forEach((id, jsonArrays) -> {
+
+                                objectBuilder.add(composeSell(jsonArrays));
+                            });
+
+                        return
+                            new JsonObject()
+                                .put(DATA, objectBuilder.build())
+                                .put(PAGINATION, new Pagination(page, size, total).toJson());
+                    }))
+                .then(message::reply)
+                .error(e -> ExceptionUtil.fail(message, e));
+
+        } catch (Exception ex) {
+            ExceptionUtil.fail(message, ex);
+        }
+    }
+
+    private JsonObject composeSell(List<JsonArray> jsonArrays) {
+        final JsonObject sell = new JsonObject();
+
+        {
+            final JsonArray array = jsonArrays.get(0);
+
+            for (int i = 0; i < fields.length; i++) {
+                sell.put(fields[i], array.getValue(i));
+            }
+        }
+
+        ImmutableList.Builder<JsonObject> builder = ImmutableList.builder();
+        {
+
+            final int suLimit = fields.length + sellUnitFields.length;
+            final int prodLimit = suLimit + productFields.length;
+            final int uLimit = prodLimit + unitFields.length;
+
+            jsonArrays.forEach(jsonArray -> {
+
+                final JsonObject sellUnit = new JsonObject();
+                for (int i = fields.length; i < suLimit; i++) {
+                    sellUnit.put(sellUnitFields[i - fields.length], jsonArray.getValue(i));
+                }
+
+                final JsonObject prod = new JsonObject();
+                for (int i = suLimit; i < prodLimit; i++) {
+                    prod.put(productFields[i - suLimit], jsonArray.getValue(i));
+                }
+
+                final JsonObject unit = new JsonObject();
+                for (int i = prodLimit; i < uLimit; i++) {
+                    unit.put(unitFields[i - prodLimit], jsonArray.getValue(i));
+                }
+
+                sellUnit
+                    .put(SellUnit.PRODUCT, prod)
+                    .put(SellUnit.UNIT, unit);
+                builder.add(sellUnit);
+            });
+        }
+
+        return sell.put(Sell.SELL_UNITS, builder.build());
     }
 
     public void find(Message<Object> message) {
-
-        final String sl = Arrays.asList(fields).stream().map(field -> "s." + field).collect(Collectors.joining(", "));
-        final String su = Arrays.asList(sellUnitFields).stream().map(field -> "su." + field).collect(Collectors.joining(", "));
-        final String u = Arrays.asList(productFields).stream().map(field -> "p." + field).collect(Collectors.joining(", "));
-        final String pr = Arrays.asList(unitFields).stream().map(field -> "u." + field).collect(Collectors.joining(", "));
-
 
         Promises
             .callable(message::body)
             .then(
                 id -> WebUtils.query(
-                    "select " + sl + ", " + su + ", " + pr + ", " + u + " from " + TABLE_NAME + " s " +
+                    "select " + sellSelect() + " from " + TABLE_NAME + " s " +
                         "join sellUnits su on su.sellId = s.id " +
                         "join products p on su.productId = p.id " +
                         "join units u on su.unitId = u.id " +
@@ -243,54 +303,22 @@ public class SellService {
                     .otherwise(
                         rs -> Promises.from(rs)
                             .map(rset -> rset.getResults())
-                            .map(jsonArrays -> {
-
-                                final JsonObject sell = new JsonObject();
-
-                                {
-                                    final JsonArray array = jsonArrays.get(0);
-
-                                    for (int i = 0; i < fields.length; i++) {
-                                        sell.put(fields[i], array.getValue(i));
-                                    }
-                                }
-
-                                ImmutableList.Builder<JsonObject> builder = ImmutableList.builder();
-                                {
-
-                                    final int suLimit = fields.length + sellUnitFields.length;
-                                    final int prodLimit = suLimit + productFields.length;
-                                    final int uLimit = prodLimit + unitFields.length;
-
-                                    jsonArrays.forEach(jsonArray -> {
-                                        final JsonObject sellUnit = new JsonObject();
-                                        for (int i = fields.length; i < suLimit; i++) {
-                                            sellUnit.put(sellUnitFields[i - fields.length], jsonArray.getValue(i));
-                                        }
-
-                                        final JsonObject prod = new JsonObject();
-                                        for (int i = suLimit; i < prodLimit; i++) {
-                                            prod.put(productFields[i - suLimit], jsonArray.getValue(i));
-                                        }
-
-                                        final JsonObject unit = new JsonObject();
-                                        for (int i = prodLimit; i < uLimit; i++) {
-                                            unit.put(unitFields[i - prodLimit], jsonArray.getValue(i));
-                                        }
-
-                                        sellUnit.put(SellUnit.PRODUCT, prod)
-                                            .put(SellUnit.UNIT, unit);
-                                        builder.add(sellUnit);
-                                    });
-                                }
-
-                                return sell.put(Sell.SELL_UNITS, builder.build());
-                            })
+                            .map(this::composeSell)
                             .then(message::reply))
                     .error(e -> ExceptionUtil.fail(message, e))
             )
             .error(e -> ExceptionUtil.fail(message, e))
         ;
+    }
+
+    private String sellSelect() {
+
+        final String sl = Arrays.asList(fields).stream().map(field -> "s." + field).collect(Collectors.joining(", "));
+        final String su = Arrays.asList(sellUnitFields).stream().map(field -> "su." + field).collect(Collectors.joining(", "));
+        final String pr = Arrays.asList(productFields).stream().map(field -> "p." + field).collect(Collectors.joining(", "));
+        final String u = Arrays.asList(unitFields).stream().map(field -> "u." + field).collect(Collectors.joining(", "));
+
+        return sl + ", " + su + ", " + pr + ", " + u;
     }
 
     public void create(Message<JsonObject> message) {
@@ -422,13 +450,68 @@ public class SellService {
                 })
             .otherwise(
                 rsp -> {
-                    JsonObject inventory = (JsonObject) rsp;
-                    WebUtils.update(
-                        TABLE_NAME, inventory,
-                        inventory.getLong(Inventory.ID, 0L), jdbcClient)
-                        .map(updateResult -> inventory.getValue(Inventory.ID))
-                        .then(message::reply)
-                        .error(e -> ExceptionUtil.fail(message, e));
+                    final JsonObject sell = (JsonObject) rsp;
+                    final long id = sell.getLong(Sell.ID);
+
+                    WebUtils.getConnection(jdbcClient)
+                        .mapToPromise(con -> {
+                            final Defer<Void> defer = Promises.defer();
+                            con.setAutoCommit(false, Util.makeDeferred(defer));
+                            return defer.promise().map(v -> con)
+                                .error(e -> con.close());
+                        })
+                        .mapToPromise(con -> WebUtils.delete(Tables.sellUnits.name(),
+                            new JsonObject()
+                                .put(SellUnit.SELL_ID, id), con).map(up -> (SQLConnection) con))
+                        .then(con -> {
+
+                            try {
+                                List<JsonObject> priceList = sell.getJsonArray(Sell.SELL_UNITS).getList();
+
+                                Promises
+                                    .when(
+                                        WebUtils.update(TABLE_NAME,
+                                            includeExcludeTransformation
+                                                .transform(sell),
+                                            new JsonObject()
+                                                .put(Sell.ID, id), con)
+                                            .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0),
+                                        WebUtils.createMulti(Tables.sellUnits.name(),
+                                            priceList.stream()
+                                                .map(removeNullsTransformation::transform)
+                                                .map(sellUnitConverterTransformation::transform)
+                                                .map(sellUnitIncludeExcludeTransformation::transform)
+                                                .filter(js -> js.getDouble(SellUnit.QUANTITY, 0.0) > 0)
+                                                .map(js -> {
+                                                    js
+                                                        .put(SellUnit.SELL_ID, id)
+                                                        .put(Unit.CREATED_BY, 0)
+                                                        .put(Unit.UPDATED_BY, 0)
+                                                        .remove(SellUnit.ID);
+                                                    return js;
+                                                })
+                                                .collect(Collectors.toList()), con)
+                                    )
+                                    .mapToPromise(t -> {
+                                        Defer<Void> defer = Promises.defer();
+                                        con.commit(Util.makeDeferred(defer));
+                                        return defer.promise()
+                                            .map((MapToHandler<Void, MutableTpl2<Long, UpdateResult>>) (v -> t));
+                                    })
+                                    .then(tpl2 -> tpl2.accept((sellId, list) -> {
+                                        message.reply(sellId);
+                                    }))
+                                    .error(e -> ExceptionUtil.fail(message, e))
+                                    .complete(p -> con.close())
+                                ;
+
+                            } catch (Exception e) {
+                                con.close();
+                                ExceptionUtil.fail(message, e);
+                            }
+                        })
+                        .error(e -> ExceptionUtil.fail(message, e))
+                    ;
                 })
             .error(e -> ExceptionUtil.fail(message, e));
     }

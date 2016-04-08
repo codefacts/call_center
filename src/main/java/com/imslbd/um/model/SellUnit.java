@@ -8,4 +8,5 @@ public class SellUnit {
     public static final java.lang.String QUANTITY = "quantity";
     public static final String PRODUCT = "product";
     public static final String UNIT = "unit";
+    public static final String ID = "id";
 }

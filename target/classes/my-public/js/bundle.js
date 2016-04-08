@@ -29182,7 +29182,7 @@ module.exports = DateView = React.createClass({
         return React.createElement(
             'span',
             null,
-            lib.formatTimeAmPm($this.props.value)
+            lib.formatDateTimeAmPm($this.props.value)
         );
     }
 });
@@ -98602,6 +98602,8 @@ var sellService = require('./SellService');
 
 var lib = require('../../components/functions');
 
+var Uris = require('../Uris');
+
 var Events = {
     SUBMIT_REQUESTED: 'SUBMIT_REQUESTED',
     SUBMIT_SUCCESSFULL: 'SUBMIT_SUCCESSFULL',
@@ -98816,7 +98818,7 @@ module.exports = CreateSell = React.createClass({
                     React.createElement(Modal, { title: modal.title, body: modal.body,
                         bodyStyle: { paddingBottom: '0', paddingTop: 0 },
                         footer: modal.footer || $this.defaultModalFooter(modal),
-                        isOpen: modal.isOpen, onClose: modal.onClose })
+                        isOpen: modal.isOpen, onClose: $this.closeModal })
                 ),
                 React.createElement(
                     'div',
@@ -98898,24 +98900,56 @@ module.exports = CreateSell = React.createClass({
                     )
                 ),
                 body: React.createElement(SellPreview, { sell: sell }),
-                isOpen: true,
-                onClose: function onClose() {
-                    $this.setState({ modal: { isOpen: false } });
-                }
+                footer: React.createElement(
+                    'div',
+                    { className: 'row' },
+                    React.createElement(
+                        'div',
+                        { className: 'col-md-10' },
+                        React.createElement(
+                            'a',
+                            { href: Uris.toAbsoluteUri(Uris.SELL.VIEW, { id: sell.id }),
+                                className: 'btn btn-success pull-left', style: { fontWeight: 'bold' } },
+                            'View'
+                        ),
+                        React.createElement(
+                            'a',
+                            { href: Uris.toAbsoluteUri(Uris.SELL.EDIT, { id: sell.id }),
+                                className: 'btn btn-warning pull-left', style: { fontWeight: 'bold' } },
+                            'Edit'
+                        )
+                    ),
+                    React.createElement(
+                        'div',
+                        { className: 'col-md-2' },
+                        React.createElement(
+                            'button',
+                            { className: 'btn btn-primary btn-lg', style: { fontWeight: 'bold' },
+                                onClick: $this.closeModal },
+                            'Ok'
+                        )
+                    )
+                ),
+                isOpen: true
             }
         });
     },
+    closeModal: function closeModal() {
+        var $this = this;
+        $this.setState({ modal: { isOpen: false } });
+    },
     defaultModalFooter: function defaultModalFooter(modal) {
+        var $this = this;
         return React.createElement(
             'button',
             { className: 'btn btn-primary btn-lg', style: { fontWeight: 'bold' },
-                onClick: modal.onClose },
+                onClick: $this.closeModal },
             'Ok'
         );
     }
 });
 
-},{"../../components/Modal":1,"../../components/functions":2,"../product/ProductService":860,"../unit/UnitService":1104,"./CreateSellGrid":872,"./CreateSellHeader":873,"./SellPreview":880,"./SellService":881,"events":1120,"react":1096}],872:[function(require,module,exports){
+},{"../../components/Modal":1,"../../components/functions":2,"../Uris":171,"../product/ProductService":860,"../unit/UnitService":1104,"./CreateSellGrid":872,"./CreateSellHeader":873,"./SellPreview":880,"./SellService":881,"events":1120,"react":1096}],872:[function(require,module,exports){
 "use strict";
 
 var _react = require('react');
@@ -99246,7 +99280,7 @@ module.exports = CreateSellHeader = React.createClass({
     getDefaultProps: function getDefaultProps() {
         return {
             sell: {
-                remarks: "Sona"
+                remarks: null
             }
         };
     },
@@ -99349,16 +99383,24 @@ module.exports = CreateSellHeader = React.createClass({
 });
 
 },{"react":1096,"react-widgets":576}],874:[function(require,module,exports){
-"use strict";
+'use strict';
 
 var React = require('react');
 var CreateSellGrid = require('./CreateSellGrid');
 var Modal = require('../../components/Modal');
-var SellPreview = require('./SellPreview');
 var EditableSellHeader = require('./EditableSellHeader');
+var SellPreview = require('./SellPreview');
 
 var EventEmitter = require("events").EventEmitter;
 var ee = new EventEmitter();
+
+var unitService = require('../unit/UnitService');
+var productService = require('../product/ProductService');
+var sellService = require('./SellService');
+
+var lib = require('../../components/functions');
+
+var Uris = require('../Uris');
 
 var Events = {
     SUBMIT_REQUESTED: 'SUBMIT_REQUESTED',
@@ -99372,17 +99414,28 @@ module.exports = EditSell = React.createClass({
 
     getInitialState: function getInitialState() {
         return {
-            products: {
+            productsById: {
                 1: {
                     id: 1,
                     name: 'Biriani'
                 },
+
                 2: {
                     id: 2,
                     name: 'Kaccchi'
+                },
+
+                3: {
+                    id: 3,
+                    name: 'Misti'
+                },
+
+                4: {
+                    id: 4,
+                    name: 'Doi'
                 }
             },
-            units: {
+            unitsById: {
                 1: {
                     id: 1,
                     name: 'Cup'
@@ -99404,37 +99457,86 @@ module.exports = EditSell = React.createClass({
                 }
             },
             sell: {
-                sellUnits: [{
-                    no: 1
-                }, {
-                    no: 2
-                }, {
-                    no: 3
-                }, {
-                    no: 4
-                }]
+                consumerName: '',
+                consumerMobile: '',
+                sellDate: new Date(),
+                remarks: ''
             },
+            sellUnitsByProductId: {},
             modal: {
                 body: '',
                 footer: '',
                 title: '',
                 isOpen: false
-            },
-            ssq: false
+            }
         };
     },
     componentDidMount: function componentDidMount() {
+
         var $this = this;
+        console.log("MOUNTING: SELL_CREATE");
         ee.on(Events.SUBMIT_REQUESTED, function (sell) {
             console.log(sell);
-            ee.emit(Events.SUBMIT_SUCCESSFULL);
+            sellService.update(sell).then(sellService.find).then($this.showOrderSuccess);
         });
 
-        ee.on(Events.SUBMIT_SUCCESSFULL, function (sell) {
-            $this.showOrderSuccess(sell || { sellUnits: [] });
+        var productPromise1 = productService.findAllDecomposed().then(function (rsp) {
+            var sellUnits = rsp.data.map(function (product) {
+                return { no: Math.random(), productId: product.id };
+            });
+            return {
+                products: rsp.data,
+                productsById: rsp.data.reduce(function (map, product) {
+                    map[product.id] = product;
+                    return map;
+                }, {}),
+                sellUnitsByProductId: sellUnits.reduce(function (map, sellUnit) {
+                    map[sellUnit.productId] = sellUnit;
+                    return map;
+                }, {})
+            };
         });
 
-        ee.on(Events.SUBMIT_FAILED, function (e) {});
+        var productPromise2 = productService.unitWisePrice().then(function (unitWisePrice) {
+            return { productsUnitWisePrice: unitWisePrice };
+        });
+
+        var unitPromise = unitService.findAllUnits().then(function (rsp) {
+            return {
+                units: rsp.data,
+                unitsById: rsp.data.reduce(function (map, unit) {
+                    map[unit.id] = unit;
+                    return map;
+                }, {})
+            };
+        });
+
+        var sellPromise = sellService.find($this.props.params.id).then(function (sell) {
+            return {
+                sell: sell,
+                sellUnitsByProductId: sell.sellUnits.reduce(function (map, cur) {
+                    map[cur.productId] = cur;
+                    return map;
+                }, {})
+            };
+        });
+
+        Promise.all([productPromise1, productPromise2, unitPromise, sellPromise]).then(function (states) {
+
+            var st0 = states[0].sellUnitsByProductId;
+            var st3 = states[3].sellUnitsByProductId;
+
+            states[0].sellUnitsByProductId = states[3].sellUnitsByProductId = lib.merge2(st0, st3);
+
+            var state = states.reduce(function (newState, state) {
+                for (var x in state) {
+                    newState[x] = state[x];
+                }
+                return newState;
+            }, {});
+
+            $this.setState(state);
+        });
     },
     componentWillUnmount: function componentWillUnmount() {
         ee.removeAllListeners();
@@ -99443,6 +99545,7 @@ module.exports = EditSell = React.createClass({
         var $this = this;
         var modal = $this.state.modal;
         var sell = $this.state.sell;
+        var sellUnitsByProductId = $this.state.sellUnitsByProductId;
 
         return React.createElement(
             'div',
@@ -99475,9 +99578,7 @@ module.exports = EditSell = React.createClass({
                                     'button',
                                     { className: 'btn btn-primary btn-block pull-right',
                                         style: { fontWeight: 'bold' },
-                                        onClick: function onClick() {
-                                            $this.submit(sell);
-                                        } },
+                                        onClick: $this.submit },
                                     'Update'
                                 )
                             )
@@ -99486,28 +99587,51 @@ module.exports = EditSell = React.createClass({
                     React.createElement(
                         'div',
                         { className: 'panel-body' },
-                        React.createElement(EditableSellHeader, { sell: sell })
+                        React.createElement(EditableSellHeader, { sell: sell, onChange: $this.onSellChange })
                     )
                 ),
                 React.createElement(
                     'div',
                     { className: 'panel panel-default' },
                     React.createElement(
-                        'button',
-                        { className: 'btn btn-primary',
-                            style: { padding: '7px', width: '100px', margin: '2px', marginBottom: '5px', marginRight: '5px' },
-                            onClick: function onClick() {
-                                $this.addNew();
-                            } },
-                        React.createElement('span', { className: 'glyphicon glyphicon-plus', 'aria-hidden': 'true' })
+                        'div',
+                        { className: 'panel-heading' },
+                        React.createElement(
+                            'div',
+                            { className: 'row' },
+                            React.createElement(
+                                'div',
+                                { className: 'col-md-9' },
+                                'Products'
+                            ),
+                            React.createElement(
+                                'div',
+                                { className: 'col-md-3' },
+                                React.createElement(
+                                    'button',
+                                    { className: 'btn btn-primary pull-right',
+                                        style: { fontWeight: 'bold' },
+                                        onClick: $this.submit },
+                                    'Update'
+                                ),
+                                React.createElement(
+                                    'button',
+                                    { className: 'btn btn-danger pull-right',
+                                        style: { fontWeight: 'bold', marginRight: '10px' },
+                                        onClick: $this.clearAllUnits },
+                                    'Clear All'
+                                )
+                            )
+                        )
                     ),
-                    React.createElement(CreateSellGrid, { units: $this.props.units, products: $this.props.products,
-                        productsUnitWisePrice: $this.props.productsUnitWisePrice,
-                        sellUnits: sell.sellUnits,
+                    React.createElement(CreateSellGrid, { unitsById: $this.state.unitsById, productsById: $this.state.productsById,
+                        productsUnitWisePrice: $this.state.productsUnitWisePrice,
+                        sellUnitsByProductId: sellUnitsByProductId,
                         onChange: $this.onSaleUnitsChange, onInit: $this.onCreateSellGridInit }),
                     React.createElement(Modal, { title: modal.title, body: modal.body,
+                        bodyStyle: { paddingBottom: '0', paddingTop: 0 },
                         footer: modal.footer || $this.defaultModalFooter(modal),
-                        isOpen: modal.isOpen, onClose: modal.onClose })
+                        isOpen: modal.isOpen, onClose: $this.closeModal })
                 ),
                 React.createElement(
                     'div',
@@ -99530,7 +99654,8 @@ module.exports = EditSell = React.createClass({
                                 React.createElement(
                                     'div',
                                     { className: 'col-sm-10' },
-                                    React.createElement('textarea', { className: 'form-control', rows: '3', placeholder: 'Remarks' })
+                                    React.createElement('textarea', { className: 'form-control', rows: '3', placeholder: 'Remarks',
+                                        name: 'remarks', value: sell.remarks, onChange: $this.onSellChange })
                                 )
                             )
                         )
@@ -99539,23 +99664,32 @@ module.exports = EditSell = React.createClass({
             )
         );
     },
+    onSellChange: function onSellChange(e) {
+        var $this = this;
+        var sell = $this.state.sell || {};
+        sell[e.target.name] = e.target.value;
+        $this.setState({ sell: sell });
+    },
     onCreateSellGridInit: function onCreateSellGridInit(createSellGrid) {
         this.createSellGrid = createSellGrid;
     },
-    onSaleUnitsChange: function onSaleUnitsChange(newSellUnits, prevSellUnits, unit) {
+    clearAllUnits: function clearAllUnits() {
+        this.createSellGrid.clearAllUnits();
+    },
+    onSaleUnitsChange: function onSaleUnitsChange(newSellUnitsByProductId) {
         var $this = this;
         $this.setState({
-            sell: {
-                sellUnits: newSellUnits
-            }
+            sellUnitsByProductId: newSellUnitsByProductId
         });
     },
-    addNew: function addNew() {
+    submit: function submit(e) {
         var $this = this;
-        $this.createSellGrid.addNew();
-    },
-    submit: function submit(sell) {
-        var $this = this;
+        var sell = $this.state.sell;
+
+        sell.sellUnits = Object.keys($this.state.sellUnitsByProductId).map(function (id) {
+            return $this.state.sellUnitsByProductId[id];
+        });
+
         ee.emit(Events.SUBMIT_REQUESTED, sell);
     },
     onSubmitFailed: function onSubmitFailed(e) {},
@@ -99568,7 +99702,7 @@ module.exports = EditSell = React.createClass({
                 title: React.createElement(
                     'h4',
                     { className: 'modal-title text-primary', id: 'myModalLabel' },
-                    'Order updated successfully. Order ID: ',
+                    'Order created successfully. Order ID: ',
                     React.createElement(
                         'strong',
                         {
@@ -99579,37 +99713,69 @@ module.exports = EditSell = React.createClass({
                     )
                 ),
                 body: React.createElement(SellPreview, { sell: sell }),
-                isOpen: true,
-                onClose: function onClose() {
-                    $this.setState({ modal: { isOpen: false } });
-                }
+                footer: React.createElement(
+                    'div',
+                    { className: 'row' },
+                    React.createElement(
+                        'div',
+                        { className: 'col-md-10' },
+                        React.createElement(
+                            'a',
+                            { href: Uris.toAbsoluteUri(Uris.SELL.VIEW, { id: sell.id }),
+                                className: 'btn btn-success pull-left', style: { fontWeight: 'bold' } },
+                            'View'
+                        ),
+                        React.createElement(
+                            'a',
+                            { href: Uris.toAbsoluteUri(Uris.SELL.CREATE),
+                                className: 'btn btn-warning pull-left', style: { fontWeight: 'bold' } },
+                            'Create New'
+                        )
+                    ),
+                    React.createElement(
+                        'div',
+                        { className: 'col-md-2' },
+                        React.createElement(
+                            'button',
+                            { className: 'btn btn-primary btn-lg', style: { fontWeight: 'bold' },
+                                onClick: $this.closeModal },
+                            'Ok'
+                        )
+                    )
+                ),
+                isOpen: true
             }
         });
     },
+    closeModal: function closeModal() {
+        var $this = this;
+        $this.setState({ modal: { isOpen: false } });
+    },
     defaultModalFooter: function defaultModalFooter(modal) {
+        var $this = this;
         return React.createElement(
             'button',
             { className: 'btn btn-primary btn-lg', style: { fontWeight: 'bold' },
-                onClick: modal.onClose },
+                onClick: $this.closeModal },
             'Ok'
         );
     }
 });
 
-},{"../../components/Modal":1,"./CreateSellGrid":872,"./EditableSellHeader":875,"./SellPreview":880,"events":1120,"react":1096}],875:[function(require,module,exports){
+},{"../../components/Modal":1,"../../components/functions":2,"../Uris":171,"../product/ProductService":860,"../unit/UnitService":1104,"./CreateSellGrid":872,"./EditableSellHeader":875,"./SellPreview":880,"./SellService":881,"events":1120,"react":1096}],875:[function(require,module,exports){
 "use strict";
 
 var React = require('react');
 var DateTimePicker = require('react-widgets').DateTimePicker;
 
-var EditableSellHeader;
-module.exports = EditableSellHeader = React.createClass({
-    displayName: 'EditableSellHeader',
+var EditSellHeader;
+module.exports = EditSellHeader = React.createClass({
+    displayName: 'EditSellHeader',
 
     getDefaultProps: function getDefaultProps() {
         return {
             sell: {
-                remarks: "Sona"
+                remarks: null
             }
         };
     },
@@ -99631,15 +99797,15 @@ module.exports = EditableSellHeader = React.createClass({
                         { className: 'form-group' },
                         React.createElement(
                             'label',
-                            { htmlFor: 'orderId', className: 'col-sm-4 control-label' },
-                            'Order ID:'
+                            { htmlFor: 'transactionId', className: 'col-sm-4 control-label' },
+                            'Transaction ID:'
                         ),
                         React.createElement(
                             'div',
                             { className: 'col-sm-8' },
-                            React.createElement('input', { type: 'text', className: 'form-control', id: 'orderId', placeholder: 'Order ID',
+                            React.createElement('input', { type: 'text', className: 'form-control', id: 'transactionId', placeholder: 'Transaction ID',
                                 readOnly: true,
-                                name: 'orderId', value: sell.orderId })
+                                name: 'transactionId', value: sell.transactionId })
                         )
                     )
                 ),
@@ -99651,16 +99817,15 @@ module.exports = EditableSellHeader = React.createClass({
                         { className: 'form-group' },
                         React.createElement(
                             'label',
-                            { htmlFor: 'transactionId', className: 'col-sm-4 control-label' },
-                            'Transaction ID:'
+                            { htmlFor: 'orderId', className: 'col-sm-4 control-label' },
+                            'Order ID:'
                         ),
                         React.createElement(
                             'div',
                             { className: 'col-sm-8' },
-                            React.createElement('input', { type: 'text', className: 'form-control', id: 'transactionId',
-                                placeholder: 'Transaction ID',
+                            React.createElement('input', { type: 'text', className: 'form-control', id: 'orderId', placeholder: 'Order ID',
                                 readOnly: true,
-                                name: 'transactionId', value: sell.transactionId })
+                                name: 'orderId', value: sell.orderId })
                         )
                     )
                 ),
@@ -99699,7 +99864,10 @@ module.exports = EditableSellHeader = React.createClass({
                             'div',
                             { className: 'col-sm-8' },
                             React.createElement(DateTimePicker, { id: 'sellDate',
-                                name: 'sellDate', value: sell.sellDate })
+                                name: 'sellDate', value: sell.sellDate,
+                                onChange: function onChange(date) {
+                                    return $this.props.onChange({ target: { name: 'sellDate', value: date } });
+                                } })
                         )
                     )
                 ),
@@ -99719,7 +99887,7 @@ module.exports = EditableSellHeader = React.createClass({
                             { className: 'col-sm-8' },
                             React.createElement('input', { type: 'text', className: 'form-control', id: 'consumerName',
                                 placeholder: 'Consumer Name',
-                                name: 'consumerName', value: sell.consumerName })
+                                name: 'consumerName', value: sell.consumerName, onChange: $this.props.onChange })
                         )
                     )
                 ),
@@ -99739,7 +99907,8 @@ module.exports = EditableSellHeader = React.createClass({
                             { className: 'col-sm-8' },
                             React.createElement('input', { type: 'text', className: 'form-control', id: 'consumerMobile',
                                 placeholder: 'Consumer Mobile',
-                                name: 'consumerMobile', value: sell.consumerMobile })
+                                name: 'consumerMobile', value: sell.consumerMobile,
+                                onChange: $this.props.onChange })
                         )
                     )
                 )
@@ -99776,6 +99945,8 @@ var OrderItemsTable = require('./OrderItemsTable');
 var Uris = require('../Uris');
 var lib = require('../../components/functions');
 
+var sellService = require('./SellService');
+
 var ListSells;
 module.exports = ListSells = _react2.default.createClass({
     displayName: 'ListSells',
@@ -99796,7 +99967,7 @@ module.exports = ListSells = _react2.default.createClass({
                     id: 1,
                     name: 'khanki'
                 },
-                sellDate: '15-Dec-2015 12:10:15 PM',
+                sellDate: null,
                 remarks: '',
                 sellUnits: [{
                     product: {
@@ -99804,7 +99975,7 @@ module.exports = ListSells = _react2.default.createClass({
                         name: 'Dibba'
                     },
                     quantity: 5,
-                    sellingUnit: {
+                    unit: {
                         id: 1,
                         name: 'Cup'
                     },
@@ -99817,7 +99988,7 @@ module.exports = ListSells = _react2.default.createClass({
                         name: 'Dibba'
                     },
                     quantity: 5,
-                    sellingUnit: {
+                    unit: {
                         id: 1,
                         name: 'Cup'
                     },
@@ -99830,7 +100001,7 @@ module.exports = ListSells = _react2.default.createClass({
                         name: 'Dibba'
                     },
                     quantity: 5,
-                    sellingUnit: {
+                    unit: {
                         id: 1,
                         name: 'Cup'
                     },
@@ -99843,7 +100014,7 @@ module.exports = ListSells = _react2.default.createClass({
                         name: 'Dibba'
                     },
                     quantity: 5,
-                    sellingUnit: {
+                    unit: {
                         id: 1,
                         name: 'Cup'
                     },
@@ -99856,7 +100027,7 @@ module.exports = ListSells = _react2.default.createClass({
                         name: 'Dibba'
                     },
                     quantity: 5,
-                    sellingUnit: {
+                    unit: {
                         id: 1,
                         name: 'Cup'
                     },
@@ -99869,183 +100040,7 @@ module.exports = ListSells = _react2.default.createClass({
                         name: 'Dibba'
                     },
                     quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }]
-            }, {
-                transactionId: Math.random(),
-                orderId: 15,
-                createdBy: {
-                    id: 1,
-                    name: 'khanki'
-                },
-                sellDate: '15-Dec-2015 12:10:15 PM',
-                remarks: '',
-                sellUnits: [{
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }]
-            }, {
-                transactionId: Math.random(),
-                orderId: 15,
-                createdBy: {
-                    id: 1,
-                    name: 'khanki'
-                },
-                sellDate: '15-Dec-2015 12:10:15 PM',
-                remarks: '',
-                sellUnits: [{
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
-                        id: 1,
-                        name: 'Cup'
-                    },
-                    unitPrice: 500,
-                    total: 8000,
-                    remarks: 'Some Note'
-                }, {
-                    product: {
-                        id: 1,
-                        name: 'Dibba'
-                    },
-                    quantity: 5,
-                    sellingUnit: {
+                    unit: {
                         id: 1,
                         name: 'Cup'
                     },
@@ -100056,6 +100051,13 @@ module.exports = ListSells = _react2.default.createClass({
             }]
         };
     },
+    componentDidMount: function componentDidMount() {
+        var $this = this;
+        sellService.findAll().then(function (rsp) {
+            $this.setState({ sells: rsp.data, pagination: rsp.pagination });
+        });
+    },
+    componentWillUnmount: function componentWillUnmount() {},
     render: function render() {
         var $this = this;
         var sells = $this.state.sells;
@@ -100110,7 +100112,8 @@ module.exports = ListSells = _react2.default.createClass({
                                                     null,
                                                     _react2.default.createElement(
                                                         'a',
-                                                        { href: '#' },
+                                                        {
+                                                            href: Uris.toAbsoluteUri(Uris.SELL.VIEW, { id: sell.id }) },
                                                         'View Order'
                                                     )
                                                 ),
@@ -100120,7 +100123,8 @@ module.exports = ListSells = _react2.default.createClass({
                                                     null,
                                                     _react2.default.createElement(
                                                         'a',
-                                                        { href: '#' },
+                                                        {
+                                                            href: Uris.toAbsoluteUri(Uris.SELL.EDIT, { id: sell.id }) },
                                                         'Edit Order'
                                                     )
                                                 )
@@ -100150,7 +100154,7 @@ module.exports = ListSells = _react2.default.createClass({
     }
 });
 
-},{"../../components/functions":2,"../Uris":171,"./OrderItemsTable":878,"./SellHeader":879,"react":1096,"react-router":911}],878:[function(require,module,exports){
+},{"../../components/functions":2,"../Uris":171,"./OrderItemsTable":878,"./SellHeader":879,"./SellService":881,"react":1096,"react-router":911}],878:[function(require,module,exports){
 'use strict';
 
 var _reactBootstrapTable = require('react-bootstrap-table');
@@ -100173,6 +100177,8 @@ module.exports = OrderItemsTable = React.createClass({
         var $this = this;
         var sellUnits = $this.props.sellUnits || [];
 
+        console.log('OrderItemsTable: sellUnits', sellUnits);
+
         var totalCounter = { quantity: 0, total: 0 };
         var serial = 1;
         sellUnits = Stream(sellUnits).peek(function (unit) {
@@ -100181,8 +100187,8 @@ module.exports = OrderItemsTable = React.createClass({
         }).map(function (sellUnit) {
             return lib.merge2(sellUnit, {
                 serial: serial++,
-                productId: sellUnit.product.name,
-                unitId: sellUnit.unit.name
+                productName: sellUnit.product.name,
+                unitName: sellUnit.unit.name
             });
         }).toArray();
 
@@ -100215,7 +100221,7 @@ module.exports = OrderItemsTable = React.createClass({
             ),
             React.createElement(
                 _reactBootstrapTable.TableHeaderColumn,
-                { dataField: 'productId' },
+                { dataField: 'productName' },
                 'Product'
             ),
             React.createElement(
@@ -100225,7 +100231,7 @@ module.exports = OrderItemsTable = React.createClass({
             ),
             React.createElement(
                 _reactBootstrapTable.TableHeaderColumn,
-                { dataField: 'unitId' },
+                { dataField: 'unitName' },
                 'Unit'
             ),
             React.createElement(
@@ -100246,15 +100252,16 @@ module.exports = OrderItemsTable = React.createClass({
 "use strict";
 
 var React = require('react');
+var DateView = require('../DateView');
 
 var SellHeader;
 module.exports = SellHeader = React.createClass({
-    displayName: "SellHeader",
+    displayName: 'SellHeader',
 
     getDefaultProps: function getDefaultProps() {
         return {
             sell: {
-                remarks: "Sona"
+                remarks: null
             }
         };
     },
@@ -100263,131 +100270,113 @@ module.exports = SellHeader = React.createClass({
         var dlStyle = { marginBottom: '5px' };
         var sell = $this.props.sell;
         return React.createElement(
-            "div",
-            { className: "row" },
+            'div',
+            { className: 'row' },
             React.createElement(
-                "div",
-                { className: "col-md-6" },
+                'div',
+                { className: 'col-md-6' },
                 React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
                     React.createElement(
-                        "dt",
+                        'dt',
                         null,
-                        "Transaction ID:"
+                        'Transaction ID:'
                     ),
                     React.createElement(
-                        "dd",
+                        'dd',
                         null,
                         sell.transactionId
                     )
                 )
             ),
             React.createElement(
-                "div",
-                { className: "col-md-6" },
+                'div',
+                { className: 'col-md-6' },
                 React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
                     React.createElement(
-                        "dt",
+                        'dt',
                         null,
-                        "Order ID:"
+                        'Order ID:'
                     ),
                     React.createElement(
-                        "dd",
+                        'dd',
                         null,
                         sell.orderId
                     )
                 )
             ),
             React.createElement(
-                "div",
-                { className: "col-md-6" },
+                'div',
+                { className: 'col-md-6' },
                 React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
                     React.createElement(
-                        "dt",
+                        'dt',
                         null,
-                        "Created By:"
+                        'Created By:'
                     ),
                     React.createElement(
-                        "dd",
+                        'dd',
                         null,
                         (sell.createdBy || {}).name
                     )
                 )
             ),
             React.createElement(
-                "div",
-                { className: "col-md-6" },
+                'div',
+                { className: 'col-md-6' },
                 React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
                     React.createElement(
-                        "dt",
+                        'dt',
                         null,
-                        "Sell Date:"
+                        'Sell Date:'
                     ),
                     React.createElement(
-                        "dd",
+                        'dd',
                         null,
-                        sell.sellDate
+                        React.createElement(DateView, { value: sell.sellDate })
                     )
                 )
             ),
             React.createElement(
-                "div",
-                { className: "col-md-6" },
+                'div',
+                { className: 'col-md-6' },
                 React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
                     React.createElement(
-                        "dt",
+                        'dt',
                         null,
-                        "Consumer Name:"
+                        'Consumer Name:'
                     ),
                     React.createElement(
-                        "dd",
+                        'dd',
                         null,
                         sell.consumerName
                     )
                 )
             ),
             React.createElement(
-                "div",
-                { className: "col-md-6" },
+                'div',
+                { className: 'col-md-6' },
                 React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
                     React.createElement(
-                        "dt",
+                        'dt',
                         null,
-                        "Consumer Mobile:"
+                        'Consumer Mobile:'
                     ),
                     React.createElement(
-                        "dd",
+                        'dd',
                         null,
                         sell.consumerMobile
-                    )
-                )
-            ),
-            !sell.remarks ? "" : React.createElement(
-                "div",
-                { className: "col-md-6" },
-                React.createElement(
-                    "dl",
-                    { className: "dl-horizontal", style: dlStyle },
-                    React.createElement(
-                        "dt",
-                        null,
-                        "Remarks:"
-                    ),
-                    React.createElement(
-                        "dd",
-                        null,
-                        sell.remarks
                     )
                 )
             )
@@ -100395,7 +100384,7 @@ module.exports = SellHeader = React.createClass({
     }
 });
 
-},{"react":1096}],880:[function(require,module,exports){
+},{"../DateView":162,"react":1096}],880:[function(require,module,exports){
 "use strict";
 
 var React = require('react');
@@ -100560,6 +100549,9 @@ var SellService = function () {
     _createClass(SellService, [{
         key: 'findAll',
         value: function findAll(params) {
+
+            console.log("SEND." + ServerEvents.FIND_ALL_SELLS, JSON.stringify(params));
+
             return new Promise(function (resolve, reject) {
 
                 eb.send(ServerEvents.FIND_ALL_SELLS, params, null, function (err, msg) {
@@ -100570,6 +100562,10 @@ var SellService = function () {
                         console.log("Error " + ServerEvents.FIND_ALL_SELLS, err || msg);
                         return;
                     }
+
+                    msg.body.data.forEach(function (sell) {
+                        return sell.sellDate = new Date(sell.sellDate);
+                    });
 
                     resolve(msg.body);
 
@@ -100621,12 +100617,12 @@ var SellService = function () {
         }
     }, {
         key: 'update',
-        value: function update(product) {
+        value: function update(sell) {
             return new Promise(function (resolve, reject) {
 
-                console.log("SEND." + ServerEvents.UPDATE_SELL, JSON.stringify(product));
+                console.log("SEND." + ServerEvents.UPDATE_SELL, JSON.stringify(sell));
 
-                eb.send(ServerEvents.UPDATE_SELL, product, null, function (err, msg) {
+                eb.send(ServerEvents.UPDATE_SELL, lib.merge2(sell, { 'sellDate': sell.sellDate.toJSON() }), null, function (err, msg) {
                     if (!!err || !!msg.failureCode || !!(msg.body || {}).responseCode) {
                         reject(err || msg);
 
@@ -100687,6 +100683,8 @@ module.exports = ServerEvents;
 var React = require('react');
 var SellHeader = require('./SellHeader');
 var OrderItemsTable = require('./OrderItemsTable');
+var sellService = require('./SellService');
+var Uris = require('../Uris');
 
 var ViewSell;
 module.exports = ViewSell = React.createClass({
@@ -100708,14 +100706,21 @@ module.exports = ViewSell = React.createClass({
                     id: 1,
                     name: 'khanki'
                 },
-                sellDate: '15-Dec-2015 12:10:15 PM',
+                sellDate: null,
                 remarks: 'RMM'
             }
         };
     },
+    componentDidMount: function componentDidMount() {
+        var $this = this;
+        sellService.find($this.props.params.id).then(function (sell) {
+            return $this.setState({ sell: sell });
+        });
+    },
     render: function render() {
         var $this = this;
         var sell = $this.state.sell;
+        var dlStyle = { marginBottom: '5px' };
 
         return React.createElement(
             'div',
@@ -100734,7 +100739,7 @@ module.exports = ViewSell = React.createClass({
                             { className: 'row' },
                             React.createElement(
                                 'div',
-                                { className: 'col-md-10' },
+                                { className: 'col-md-8' },
                                 React.createElement(
                                     'h3',
                                     { className: 'panel-title', style: { lineHeight: '28px', fontSize: '20px' } },
@@ -100745,9 +100750,20 @@ module.exports = ViewSell = React.createClass({
                                 'div',
                                 { className: 'col-md-2' },
                                 React.createElement(
-                                    'button',
-                                    { className: 'btn btn-warning btn-block pull-right' },
-                                    'Edit Transaction'
+                                    'a',
+                                    { href: Uris.toAbsoluteUri(Uris.SELL.CREATE),
+                                        className: 'btn btn-primary btn-block pull-right' },
+                                    'Create New'
+                                )
+                            ),
+                            React.createElement(
+                                'div',
+                                { className: 'col-md-2' },
+                                React.createElement(
+                                    'a',
+                                    { href: Uris.toAbsoluteUri(Uris.SELL.EDIT, { id: $this.props.params.id }),
+                                        className: 'btn btn-warning btn-block pull-right' },
+                                    'Edit'
                                 )
                             )
                         )
@@ -100783,13 +100799,31 @@ module.exports = ViewSell = React.createClass({
                         { className: 'panel-body' },
                         React.createElement(OrderItemsTable, { sellUnits: sell.sellUnits })
                     )
+                ),
+                !sell.remarks ? "" : React.createElement(
+                    'div',
+                    { className: 'col-md-6' },
+                    React.createElement(
+                        'dl',
+                        { className: 'dl-horizontal', style: dlStyle },
+                        React.createElement(
+                            'dt',
+                            null,
+                            'Remarks:'
+                        ),
+                        React.createElement(
+                            'dd',
+                            null,
+                            sell.remarks
+                        )
+                    )
                 )
             )
         );
     }
 });
 
-},{"./OrderItemsTable":878,"./SellHeader":879,"react":1096}],884:[function(require,module,exports){
+},{"../Uris":171,"./OrderItemsTable":878,"./SellHeader":879,"./SellService":881,"react":1096}],884:[function(require,module,exports){
 arguments[4][492][0].apply(exports,arguments)
 },{"dup":492}],885:[function(require,module,exports){
 arguments[4][493][0].apply(exports,arguments)
