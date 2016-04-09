@@ -38,10 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -77,6 +74,7 @@ public class SellService {
     private final RemoveNullsTransformation removeNullsTransformation;
 
     private final IncludeExcludeTransformation includeExcludeTransformation;
+    private final IncludeExcludeTransformation updateIncludeExcludeTransformation;
     private final ConverterTransformation converterTransformation;
     private final DefaultValueTransformation defaultValueTransformation;
 
@@ -110,7 +108,12 @@ public class SellService {
 
         {
             removeNullsTransformation = new RemoveNullsTransformation();
-            includeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields), null);
+
+            includeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields),
+                ImmutableSet.of(Sell.SELL_DATE));
+
+            updateIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields), null);
+
             converterTransformation = new ConverterTransformation(converters(fields, TABLE_NAME));
 
             defaultValueTransformation = new DefaultValueTransformation(
@@ -121,11 +124,13 @@ public class SellService {
 
             transformationPipeline = new JsonTransformationPipeline(
                 ImmutableList.of(
+                    new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
                     converterTransformation,
                     defaultValueTransformation,
                     removeNullsTransformation
                 )
             );
+
 
             validationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(validators()));
         }
@@ -140,6 +145,7 @@ public class SellService {
 
             sellUnitTransformationPipeline = new JsonTransformationPipeline(
                 ImmutableList.of(
+                    new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
                     removeNullsTransformation,
                     defaultValueTransformation,
                     converterTransformation,
@@ -379,7 +385,8 @@ public class SellService {
                                                 .transform(sell)
                                                 .put(Sell.ID, newId)
                                                 .put(Sell.TRANSACTION_ID, transactionId.getAndIncrement())
-                                                .put(Sell.ORDER_ID, orderId.getAndIncrement()), con)
+                                                .put(Sell.ORDER_ID, orderId.getAndIncrement())
+                                                .put(Sell.SELL_DATE, Converters.toMySqlDateString(new Date())), con)
                                             .map(updateResult -> updateResult.getKeys().getLong(0)),
                                         WebUtils.createMulti(Tables.sellUnits.name(),
                                             priceList.stream()
@@ -471,7 +478,7 @@ public class SellService {
                                 Promises
                                     .when(
                                         WebUtils.update(TABLE_NAME,
-                                            includeExcludeTransformation
+                                            updateIncludeExcludeTransformation
                                                 .transform(sell),
                                             new JsonObject()
                                                 .put(Sell.ID, id), con)

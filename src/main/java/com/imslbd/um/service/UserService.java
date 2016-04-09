@@ -1,9 +1,7 @@
 package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.imslbd.call_center.MyApp;
 import com.imslbd.um.Tables;
 import com.imslbd.um.Um;
 import com.imslbd.um.UmErrorCodes;
@@ -18,31 +16,33 @@ import io.crm.pipelines.transformation.impl.json.object.IncludeExcludeTransforma
 import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformation;
 import io.crm.pipelines.validator.ValidationPipeline;
 import io.crm.pipelines.validator.ValidationResult;
+import io.crm.pipelines.validator.ValidationResultBuilder;
 import io.crm.pipelines.validator.Validator;
+import io.crm.pipelines.validator.composer.FieldValidatorComposer;
 import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
 import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
+import io.crm.util.touple.immutable.Tpl2;
+import io.crm.util.touple.immutable.Tpls;
 import io.crm.web.util.Converters;
 import io.crm.web.util.Pagination;
 import io.crm.web.util.WebUtils;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.Function;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.imslbd.um.service.Services.converters;
 
 /**
  * Created by shahadat on 3/6/16.
@@ -56,6 +56,7 @@ public class UserService {
     private static final String DATA = "data";
     private static final Integer DEFAULT_PAGE_SIZE = 100;
     private static final String VALIDATION_ERROR = "validationError";
+    private static final String PASSWORD_MISMATCH = "PASSWORD_MISMATCH";
 
     private final Vertx vertx;
     private final JDBCClient jdbcClient;
@@ -69,7 +70,12 @@ public class UserService {
     private final DefaultValueTransformation defaultValueTransformation;
 
     private final JsonTransformationPipeline transformationPipeline;
+    private final JsonTransformationPipeline createTransformationPipeline;
+    private final ValidationPipeline<JsonObject> createValidationPipeline;
     private final ValidationPipeline<JsonObject> validationPipeline;
+
+    private final ValidationPipeline<JsonObject> changePasswordValidationPipeline;
+    private final IncludeExcludeTransformation changePasswordIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.of(User.ID, User.PASSWORD), null);
 
     public UserService(JDBCClient jdbcClient, String[] fields, Vertx vertx) {
         this.vertx = vertx;
@@ -78,7 +84,7 @@ public class UserService {
         removeNullsTransformation = new RemoveNullsTransformation();
         includeExcludeTransformation = new IncludeExcludeTransformation(
             ImmutableSet.copyOf(Arrays.asList(fields)), null);
-        converterTransformation = new ConverterTransformation(converters(fields));
+        converterTransformation = new ConverterTransformation(converters(fields, Tables.users.name()));
 
         defaultValueTransformation = new DefaultValueTransformation(
             new JsonObject()
@@ -86,8 +92,9 @@ public class UserService {
                 .put(Unit.CREATED_BY, 0)
         );
 
-        transformationPipeline = new JsonTransformationPipeline(
+        createTransformationPipeline = new JsonTransformationPipeline(
             ImmutableList.of(
+                new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
                 removeNullsTransformation,
                 includeExcludeTransformation,
                 converterTransformation,
@@ -95,17 +102,28 @@ public class UserService {
             )
         );
 
+        transformationPipeline = new JsonTransformationPipeline(
+            ImmutableList.of(
+                new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
+                removeNullsTransformation,
+                includeExcludeTransformation,
+                new IncludeExcludeTransformation(null, ImmutableSet.of(User.PASSWORD)),
+                converterTransformation,
+                defaultValueTransformation
+            )
+        );
+
         validationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(validators()));
+        createValidationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(creationValidators()));
+
+        changePasswordValidationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(changePasswordValidators()));
     }
 
-    private List<Validator<JsonObject>> validators() {
+    private List<Validator<JsonObject>> changePasswordValidators() {
         List<Validator<JsonObject>> validators = new ArrayList<>();
         JsonObjectValidatorComposer validatorComposer = new JsonObjectValidatorComposer(validators, Um.messageBundle)
-            .field(User.USER_ID,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .stringType()
-                    .notNullEmptyOrWhiteSpace())
-            .field(User.USERNAME,
+            .field(User.ID, fieldValidatorComposer -> fieldValidatorComposer.numberType().notNull().positive().nonZero())
+            .field(User.CURRENT_PASSWORD,
                 fieldValidatorComposer -> fieldValidatorComposer
                     .notNullEmptyOrWhiteSpace()
                     .stringType())
@@ -113,46 +131,50 @@ public class UserService {
                 fieldValidatorComposer -> fieldValidatorComposer
                     .notNullEmptyOrWhiteSpace()
                     .stringType())
-            .field(User.NAME,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .notNullEmptyOrWhiteSpace()
-                    .stringType())
-            .field(User.PHONE,
+            .field(User.RETYPE_PASSWORD,
                 fieldValidatorComposer -> fieldValidatorComposer
                     .notNullEmptyOrWhiteSpace()
                     .stringType());
+
+        validators.add(user -> {
+            String retypePsd = Util.or(user.getString(User.RETYPE_PASSWORD), "");
+            String password = Util.or(user.getString(User.PASSWORD), "");
+            if (!password.equals(retypePsd))
+                return new ValidationResultBuilder()
+                    .setField(User.RETYPE_PASSWORD)
+                    .setErrorCode(UmErrorCodes.TWO_PASSWORD_MISMATCH.code())
+                    .createValidationResult();
+            else {
+                return null;
+            }
+        });
         return validatorComposer.getValidatorList();
     }
 
-    private ImmutableMap<String, Function<Object, Object>> converters(String[] fields) {
-        JsonObject db = MyApp.loadConfig().getJsonObject(Services.DATABASE);
-        String url = db.getString("url");
-        String user = db.getString("user");
-        String password = db.getString("password");
+    private List<Validator<JsonObject>> creationValidators() {
+        List<Validator<JsonObject>> validators = new ArrayList<>();
+        JsonObjectValidatorComposer validatorComposer = new JsonObjectValidatorComposer(validators, Um.messageBundle)
+            .field(User.USERNAME,
+                fieldValidatorComposer -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace())
+            .field(User.PASSWORD,
+                (fieldValidatorComposer) -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace())
+            .field(User.NAME,
+                fieldValidatorComposer -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace())
+            .field(User.PHONE,
+                fieldValidatorComposer -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace());
+        return validatorComposer.getValidatorList();
+    }
 
-        ImmutableMap.Builder<String, Function<Object, Object>> builder = ImmutableMap.builder();
-        try {
-            try (Connection connection = DriverManager.getConnection(url, user, password)) {
-                Statement statement = connection.createStatement();
-                statement.execute("select * from " + Tables.users.name());
-                ResultSet rs = statement.getResultSet();
-                ResultSetMetaData metaData = rs.getMetaData();
-
-                int columnCount = metaData.getColumnCount();
-                for (int i = 0; i < columnCount; i++) {
-                    int columnType = metaData.getColumnType(i + 1);
-                    Function<Object, Object> converter = Services.TYPE_CONVERTERS.get(columnType);
-                    Objects.requireNonNull(converter, "Type Converter can't be null for Type: " +
-                        "[" + columnType + ": " + Services.JDBC_TYPES.get(columnType) + "]");
-                    builder.put(fields[i], converter);
-                    System.out.println(columnType + ": " + Services.JDBC_TYPES.get(columnType));
-                }
-            }
-        } catch (SQLException e) {
-            LOGGER.error("Error connecting to database through jdbc", e);
-        }
-
-        return builder.build();
+    private List<Validator<JsonObject>> validators() {
+        List<Validator<JsonObject>> validators = new ArrayList<>();
+        JsonObjectValidatorComposer validatorComposer = new JsonObjectValidatorComposer(validators, Um.messageBundle)
+            .field(User.USERNAME,
+                fieldValidatorComposer -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace())
+            .field(User.NAME,
+                fieldValidatorComposer -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace())
+            .field(User.PHONE,
+                fieldValidatorComposer -> fieldValidatorComposer.stringType().notNullEmptyOrWhiteSpace());
+        return validatorComposer.getValidatorList();
     }
 
     public void findAll(Message<JsonObject> message) {
@@ -228,7 +250,7 @@ public class UserService {
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
                 user -> {
-                    List<ValidationResult> validationResults = validationPipeline.validate(user);
+                    List<ValidationResult> validationResults = createValidationPipeline.validate(user);
                     return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
                 })
             .on(VALIDATION_ERROR,
@@ -268,7 +290,7 @@ public class UserService {
     }
 
     public void update(Message<JsonObject> message) {
-        Promises.callable(() -> transformationPipeline.transform(message.body()))
+        Promises.callable(() -> createTransformationPipeline.transform(message.body()))
             .decideAndMap(
                 user -> {
                     List<ValidationResult> validationResults = validationPipeline.validate(user);
@@ -316,6 +338,94 @@ public class UserService {
             .error(e ->
                 ExceptionUtil.fail(message, e))
         ;
+    }
+
+    public void changePassword(Message<JsonObject> message) {
+        Promises.callable(() -> converterTransformation.transform(message.body()))
+            .decideAndMap(
+                user -> {
+                    List<ValidationResult> validationResults = changePasswordValidationPipeline.validate(user);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
+                })
+            .on(VALIDATION_ERROR,
+                rsp -> {
+                    List<ValidationResult> validationResults = (List<ValidationResult>) rsp;
+                    message.reply(
+                        new JsonObject()
+                            .put(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code())
+                            .put(Services.MESSAGE_CODE, ErrorCodes.VALIDATION_ERROR.messageCode())
+                            .put(Services.MESSAGE,
+                                Um.messageBundle.translate(ErrorCodes.VALIDATION_ERROR.messageCode(),
+                                    new JsonObject().put(Services.VALIDATION_RESULTS, validationResults)))
+                            .put(Services.VALIDATION_RESULTS,
+                                validationResults.stream()
+                                    .map(v -> v.addAdditionals(Services.ERROR_CODES_MAP.get(v.getErrorCode())))
+                                    .peek(v -> v.message(
+                                        Um.messageBundle.translate(
+                                            v.getAdditionals().getString(Services.MESSAGE_CODE), v.toJson())))
+                                    .map(ValidationResult::toJson)
+                                    .collect(Collectors.toList())),
+                        new DeliveryOptions()
+                            .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
+                    );
+                })
+            .otherwise(
+                rsp -> {
+
+                    Promises.callable(() -> (JsonObject) rsp)
+                        .mapToPromise(
+                            user -> WebUtils.query("select password from users where id = " + user.getValue(User.ID), new JsonArray(), jdbcClient)
+                                .map(
+                                    resultSet -> (Tpl2<List<JsonArray>, JsonObject>) Tpls.of(
+                                        resultSet.getResults(), user)))
+                        .decideAndMap(val -> val.apply(
+                            (list, user) ->
+                                Decision.of(
+                                    list.size() <= 0
+                                        ? PASSWORD_MISMATCH
+                                        : !list.get(0).getString(0).equals(user.getString(User.CURRENT_PASSWORD))
+                                        ? PASSWORD_MISMATCH
+                                        : Decision.OTHERWISE, user)))
+                        .on(PASSWORD_MISMATCH,
+                            rssp -> {
+                                ImmutableList<ValidationResult> validationResults = ImmutableList.of(
+                                    new ValidationResultBuilder()
+                                        .setField(User.PASSWORD)
+                                        .setErrorCode(ErrorCodes.PASSWORD_MISMATCH.code())
+                                        .createValidationResult()
+                                );
+                                message.reply(
+                                    new JsonObject()
+                                        .put(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code())
+                                        .put(Services.MESSAGE_CODE, ErrorCodes.VALIDATION_ERROR.messageCode())
+                                        .put(Services.MESSAGE,
+                                            Um.messageBundle.translate(ErrorCodes.VALIDATION_ERROR.messageCode(),
+                                                new JsonObject().put(Services.VALIDATION_RESULTS, validationResults)))
+                                        .put(Services.VALIDATION_RESULTS,
+                                            validationResults.stream()
+                                                .map(v -> v.addAdditionals(Services.ERROR_CODES_MAP.get(v.getErrorCode())))
+                                                .peek(v -> v.message(
+                                                    Um.messageBundle.translate(
+                                                        v.getAdditionals().getString(Services.MESSAGE_CODE), v.toJson())))
+                                                .map(ValidationResult::toJson)
+                                                .collect(Collectors.toList())),
+                                    new DeliveryOptions()
+                                        .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
+                                );
+                            })
+                        .otherwise(user -> {
+
+                            user = changePasswordIncludeExcludeTransformation.transform(user);
+                            final Long id = user.getLong(User.ID, 0L);
+                            WebUtils.update(Tables.users.name(), user, id, jdbcClient)
+                                .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
+                                .then(message::reply)
+                                .error(e -> ExceptionUtil.fail(message, e));
+                        })
+                        .error(e -> ExceptionUtil.fail(message, e))
+                    ;
+                })
+            .error(e -> ExceptionUtil.fail(message, e));
     }
 
     public static void main(String... args) {

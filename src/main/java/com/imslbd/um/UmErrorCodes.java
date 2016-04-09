@@ -1,7 +1,6 @@
 package com.imslbd.um;
 
-import static com.imslbd.um.UmErrorCodeHelper.error;
-import static com.imslbd.um.UmErrorCodeHelper.errorHttp;
+import static com.imslbd.um.UmErrorCodeHelper.*;
 
 /**
  * Created by shahadat on 3/27/16.
@@ -10,7 +9,8 @@ public enum UmErrorCodes {
     UNIT_NOT_FOUND(error(), "unit.not.found.error", errorHttp()),
     USER_NOT_FOUND(error(), "user.not.found.error", errorHttp()),
     PRODUCT_NOT_FOUND(error(), "product.not.found.error", errorHttp()),
-    INVENTORY_NOT_FOUND(error(), "inventory.not.found.error", errorHttp());
+    INVENTORY_NOT_FOUND(error(), "inventory.not.found.error", errorHttp()),
+    TWO_PASSWORD_MISMATCH(validation(), "two.password.mismatch.validation.error", validationHttp());
     private final int code;
     private final String messageCode;
     private final int httpResponseCode;

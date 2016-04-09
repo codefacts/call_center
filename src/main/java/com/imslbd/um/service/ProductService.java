@@ -9,6 +9,7 @@ import com.imslbd.um.UmUtils;
 import com.imslbd.um.model.Product;
 import com.imslbd.um.model.ProductUnitPrice;
 import com.imslbd.um.model.Unit;
+import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
 import io.crm.pipelines.transformation.JsonTransformationPipeline;
 import io.crm.pipelines.transformation.impl.json.object.ConverterTransformation;
@@ -104,9 +105,9 @@ public class ProductService {
 
         includeExcludeTransformation = new IncludeExcludeTransformation(
             ImmutableSet.<String>builder().addAll(
-                Arrays.asList(fields)).build(), ImmutableSet.of(Product.ID));
-        unitIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(priceFields),
-            ImmutableSet.of(Unit.ID));
+                Arrays.asList(fields)).build(), null);
+        unitIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(priceFields), ImmutableSet.of(
+            Unit.ID, User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE));
 
         converterTransformation = new ConverterTransformation(converters(fields, TABLE_NAME));
         unitConverterTransformation = new ConverterTransformation(converters(priceFields, PRODUCT_UNIT_PRICES_TABLE));
@@ -119,6 +120,7 @@ public class ProductService {
 
         transformationPipeline = new JsonTransformationPipeline(
             ImmutableList.of(
+                new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
                 removeNullsTransformation,
                 converterTransformation,
                 defaultValueTransformation

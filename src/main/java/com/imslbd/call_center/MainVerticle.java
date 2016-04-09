@@ -120,6 +120,7 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_USER))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_USER))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_USER))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CHANGE_PASSWORD))
 
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_UNITS))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_UNIT))
@@ -352,6 +353,7 @@ final public class MainVerticle extends AbstractVerticle {
                 eventBus.consumer(UmEvents.CREATE_USER, userService::create);
                 eventBus.consumer(UmEvents.UPDATE_USER, userService::update);
                 eventBus.consumer(UmEvents.DELETE_USER, userService::delete);
+                eventBus.consumer(UmEvents.CHANGE_PASSWORD, userService::changePassword);
 
             })
             .error(e -> {

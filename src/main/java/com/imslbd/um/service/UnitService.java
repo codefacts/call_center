@@ -7,7 +7,9 @@ import com.imslbd.call_center.MainVerticle;
 import com.imslbd.call_center.MyApp;
 import com.imslbd.um.*;
 import com.imslbd.um.model.Unit;
+import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
+import io.crm.pipelines.transformation.JsonTransformationPipeline;
 import io.crm.pipelines.transformation.impl.json.object.ConverterTransformation;
 import io.crm.pipelines.transformation.impl.json.object.DefaultValueTransformation;
 import io.crm.pipelines.transformation.impl.json.object.IncludeExcludeTransformation;
@@ -44,6 +46,7 @@ public class UnitService {
     private final ConverterTransformation converterTransformation;
     private final IncludeExcludeTransformation includeExcludeTransformation;
     private final DefaultValueTransformation defaultValueTransformation;
+    private final JsonTransformationPipeline transformationPipeline;
     private final String[] fields;
     private final int DEFAULT_PAGE_SIZE = 20;
     private final ValidationPipeline<JsonObject> validationPipeline;
@@ -55,7 +58,7 @@ public class UnitService {
         this.vertx = vertx;
 
         includeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(Arrays.asList(fields)), null);
-        converterTransformation = new ConverterTransformation(converters(fields));
+        converterTransformation = new ConverterTransformation(Services.converters(fields, Tables.units.name()));
 
         validationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(validators()));
         defaultValueTransformation = new DefaultValueTransformation(
@@ -63,40 +66,20 @@ public class UnitService {
                 .put(Unit.UPDATED_BY, 0)
                 .put(Unit.CREATED_BY, 0)
         );
+
+        transformationPipeline = new JsonTransformationPipeline(ImmutableList.of(
+            new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
+            removeNullsTransformation,
+            converterTransformation,
+            defaultValueTransformation,
+            includeExcludeTransformation
+        ));
     }
 
     private List<Validator<JsonObject>> validators() {
         List<Validator<JsonObject>> validators = new ArrayList<>();
         JsonObjectValidatorComposer validatorComposer = new JsonObjectValidatorComposer(validators, Um.messageBundle);
         return validatorComposer.getValidatorList();
-    }
-
-    private ImmutableMap<String, Function<Object, Object>> converters(String[] fields) {
-        JsonObject db = MyApp.loadConfig().getJsonObject(Services.DATABASE);
-        String url = db.getString("url");
-        String user = db.getString("user");
-        String password = db.getString("password");
-
-        ImmutableMap.Builder<String, Function<Object, Object>> builder = ImmutableMap.builder();
-        try {
-            try (Connection connection = DriverManager.getConnection(url, user, password)) {
-                Statement statement = connection.createStatement();
-                statement.execute("select * from units");
-                ResultSet rs = statement.getResultSet();
-                ResultSetMetaData metaData = rs.getMetaData();
-
-                int columnCount = metaData.getColumnCount();
-                for (int i = 0; i < columnCount; i++) {
-                    int columnType = metaData.getColumnType(i + 1);
-                    builder.put(fields[i], Services.TYPE_CONVERTERS.get(columnType));
-                    System.out.println(columnType + ": " + Services.JDBC_TYPES.get(columnType));
-                }
-            }
-        } catch (SQLException e) {
-            LOGGER.error("Error connecting to database through jdbc", e);
-        }
-
-        return builder.build();
     }
 
     public void findAllUnits(Message<JsonObject> message) {
@@ -140,11 +123,7 @@ public class UnitService {
 
     public void createUnit(Message<JsonObject> message) {
         try {
-            JsonObject js = Util.or(message.body(), new JsonObject());
-            js = removeNullsTransformation.transform(js);
-            js = includeExcludeTransformation.transform(js);
-            js = converterTransformation.transform(js);
-            js = defaultValueTransformation.transform(js);
+            JsonObject js = transformationPipeline.transform(Util.or(message.body(), new JsonObject()));
 
             final JsonObject unitJson = js;
 
@@ -174,11 +153,7 @@ public class UnitService {
 
     public void updateUnit(Message<JsonObject> message) {
         try {
-            JsonObject js = Util.or(message.body(), new JsonObject());
-            js = removeNullsTransformation.transform(js);
-            js = includeExcludeTransformation.transform(js);
-            js = converterTransformation.transform(js);
-            js = defaultValueTransformation.transform(js);
+            JsonObject js = transformationPipeline.transform(Util.or(message.body(), new JsonObject()));
 
             final JsonObject unitJson = js;
 

@@ -97,10 +97,11 @@ public class InventoryService {
 
         transformationPipeline = new JsonTransformationPipeline(
             ImmutableList.of(
+                new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
+                removeNullsTransformation,
                 includeExcludeTransformation,
                 converterTransformation,
-                defaultValueTransformation,
-                removeNullsTransformation
+                defaultValueTransformation
             )
         );
 
@@ -114,6 +115,7 @@ public class InventoryService {
         );
 
         productTransformationPipeline = new JsonTransformationPipeline(ImmutableList.of(
+            new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
             productIncludeExcludeTransformation,
             productConverterTransformation,
             productDefaultValueTransformation,
