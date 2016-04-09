@@ -4,6 +4,7 @@ import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
 import com.imslbd.um.Tables;
 import com.imslbd.um.UmEvents;
+import com.imslbd.um.controller.AuthController;
 import com.imslbd.um.controller.UmUris;
 import com.imslbd.um.controller.UserController;
 import com.imslbd.um.model.Product;
@@ -31,8 +32,11 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.jwt.JWTAuth;
+import io.vertx.ext.auth.jwt.JWTOptions;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CookieHandler;
 import io.vertx.ext.web.handler.SessionHandler;
 import io.crm.web.statichandler.StaticHandler;
@@ -488,6 +492,13 @@ final public class MainVerticle extends AbstractVerticle {
         UserController userController = new UserController(vertx);
 
         router.get(UmUris.USERS_HOME.value).handler(userController::index);
+
+        //Auth Um
+
+        AuthController authController = new AuthController(vertx, jdbcClientUm);
+        router.post(UmUris.LOGIN.value).handler(BodyHandler.create());
+        router.post(UmUris.LOGIN.value).handler(authController::login);
+        router.post(UmUris.LOGOUT.value).handler(authController::logout);
     }
 
     private void otherwiseController(final Router router) {

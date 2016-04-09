@@ -7,7 +7,9 @@ import static com.imslbd.um.controller.H.api;
  */
 public enum UmUris {
     USERS_HOME("/users-home", "USERS"),
-    USERS(api("/users"), "USERS");
+    USERS(api("/users"), "USERS"),
+    LOGIN("/um-login", "Login"),
+    LOGOUT("/um-logout", "Login");
     public final String value;
     public final String label;
 
