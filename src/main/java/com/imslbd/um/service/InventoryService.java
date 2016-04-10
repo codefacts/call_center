@@ -1,9 +1,7 @@
 package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.imslbd.call_center.MyApp;
 import com.imslbd.um.*;
 import com.imslbd.um.model.Inventory;
 import com.imslbd.um.model.Unit;
@@ -30,22 +28,19 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
-import io.vertx.ext.sql.*;
 import io.vertx.ext.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.imslbd.um.service.Services.DATA;
 import static com.imslbd.um.service.Services.converters;
+import static io.crm.web.util.WebUtils.multiUpdate;
+import static io.crm.web.util.WebUtils.query;
+import static io.crm.web.util.WebUtils.update;
 
 /**
  * Created by shahadat on 3/6/16.
@@ -61,6 +56,7 @@ public class InventoryService {
     private static final String VALIDATION_ERROR = "validationError";
     private static final String TABLE_NAME = Tables.inventories.name();
     private static final String QUANTITY = "quantity";
+    private static final String UNIT_ID_MISMATCH = "UNIT_ID_MISMATCH";
 
     private final Vertx vertx;
     private final JDBCClient jdbcClient;
@@ -80,6 +76,7 @@ public class InventoryService {
     private final JsonTransformationPipeline productTransformationPipeline;
 
     private final ValidationPipeline<JsonObject> validationPipeline;
+    private final String SRC_DEST_SAME = "SRC_DEST_SAME";
 
     public InventoryService(JDBCClient jdbcClient, String[] fields, String[] inventoryProductFields, Vertx vertx) {
         this.vertx = vertx;
@@ -149,9 +146,9 @@ public class InventoryService {
                 String from = "from " + TABLE_NAME;
 
                 Promises.when(
-                    WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
+                    query("select count(*) as totalCount " + from, jdbcClient)
                         .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
-                    WebUtils.query(
+                    query(
                         "select * " + from + " "
                             + UmUtils.limitOffset(page, size), jdbcClient)
                         .map(resultSet3 -> new JsonObject()
@@ -176,8 +173,8 @@ public class InventoryService {
         Promises
             .callable(message::body)
             .then(
-                id -> WebUtils.query("select * from " + TABLE_NAME + " where id = " + id, jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? INVENTORY_NOT_FOUND : Decision.OTHERWISE)
+                id -> query("select * from " + TABLE_NAME + " where id = " + id, jdbcClient)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? INVENTORY_NOT_FOUND : Decision.CONTINUE)
                     .on(INVENTORY_NOT_FOUND,
                         rs -> {
                             message.reply(
@@ -194,7 +191,7 @@ public class InventoryService {
                                         Util.toString(UmErrorCodes.INVENTORY_NOT_FOUND.code()))
                             );
                         })
-                    .otherwise(
+                    .contnue(
                         rs -> Promises.from(rs)
                             .map(rset -> rset.getRows().get(0))
                             .then(message::reply))
@@ -212,7 +209,7 @@ public class InventoryService {
                     List<ValidationResult> validationResults = validationPipeline.validate(inventory);
                     return validationResults != null
                         ? Decision.of(VALIDATION_ERROR, validationResults)
-                        : Decision.of(Decision.OTHERWISE, inventory);
+                        : Decision.of(Decision.CONTINUE, inventory);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -237,7 +234,7 @@ public class InventoryService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     JsonObject inventory = (JsonObject) rsp;
                     WebUtils
@@ -255,7 +252,7 @@ public class InventoryService {
             .decideAndMap(
                 inventory -> {
                     List<ValidationResult> validationResults = validationPipeline.validate(inventory);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, inventory);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.CONTINUE, inventory);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -279,7 +276,7 @@ public class InventoryService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     JsonObject inventory = (JsonObject) rsp;
                     WebUtils.update(
@@ -310,7 +307,7 @@ public class InventoryService {
     }
 
     public void findAllProducts(Message<Object> message) {
-        WebUtils.query("select * from " + Tables.inventoryProducts + " " +
+        query("select * from " + Tables.inventoryProducts + " " +
             "where inventoryId = " + message.body(), jdbcClient)
             .map(ResultSet::getRows)
             .then(list -> message.reply(
@@ -398,6 +395,93 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
+    }
+
+    public void transferTo(Message<JsonObject> message) {
+        Promises
+            .callable(() -> {
+                JsonObject body = message.body();
+                return body
+                    .put(InventoryProduct.SRC_INVENTORY_ID,
+                        Converters.toLong(body.getValue(InventoryProduct.SRC_INVENTORY_ID)))
+                    .put(InventoryProduct.DEST_INVENTORY_ID,
+                        Converters.toLong(body.getValue(InventoryProduct.DEST_INVENTORY_ID)))
+                    .put(InventoryProduct.PRODUCT_ID,
+                        Converters.toLong(body.getValue(InventoryProduct.PRODUCT_ID)))
+                    .put(InventoryProduct.QUANTITY,
+                        Converters.toDouble(body.getValue(InventoryProduct.QUANTITY)))
+                    .put(InventoryProduct.UNIT_ID,
+                        Converters.toLong(body.getValue(InventoryProduct.UNIT_ID)))
+                    ;
+            })
+            .map(
+                qqr -> qqr
+                    .put(InventoryProduct.INVENTORY_ID,
+                        qqr.getLong(InventoryProduct.DEST_INVENTORY_ID)))
+            .decide(req -> req.getLong(InventoryProduct.SRC_INVENTORY_ID)
+                .equals(req.getLong(InventoryProduct.DEST_INVENTORY_ID)) ? SRC_DEST_SAME : Decision.CONTINUE)
+            .on(SRC_DEST_SAME, val -> {
+                message.fail(500, "Destination and source can't be same.");
+            })
+            .contnue(
+                val1 -> Promises.from((JsonObject) val1)
+                    .mapToPromise(
+                        qqr -> query("SELECT quantity, unitId FROM `inventoryProducts` " +
+                            " WHERE " +
+                            "inventoryId = " + qqr.getLong(InventoryProduct.INVENTORY_ID) +
+                            " AND " +
+                            "productId = " + qqr.getLong(InventoryProduct.PRODUCT_ID), jdbcClient)
+                            .map(
+                                v -> {
+                                    double newQuantity = v.getNumRows() > 0 ? v.getResults().get(0).getDouble(0) : 0;
+
+                                    newQuantity += qqr.getDouble(InventoryProduct.QUANTITY);
+
+                                    if (v.getNumRows() > 0) {
+                                        long unitId = v.getResults().get(0).getLong(1);
+                                        qqr.put(InventoryProduct.UNIT_ID_2, unitId);
+                                    }
+
+                                    return (JsonObject)
+                                        qqr
+                                            .put(InventoryProduct.NEQ_QUANTITY, newQuantity);
+                                }))
+
+                    .decide(qqr ->
+                        (!qqr.containsKey(InventoryProduct.UNIT_ID_2)
+                            || qqr.getLong(InventoryProduct.UNIT_ID)
+                            .equals(qqr.getLong(InventoryProduct.UNIT_ID_2))) ? Decision.CONTINUE : UNIT_ID_MISMATCH)
+
+                    .on(UNIT_ID_MISMATCH, val2 -> message.fail(500, "Source and destination unit id must be same."))
+
+                    .contnue(
+                        val3 -> Promises.from(val3)
+                            .mapToPromise(qqr -> WebUtils.update(
+                                "UPDATE `inventoryProducts` SET " +
+                                    "`quantity`= quantity - " + qqr.getDouble(InventoryProduct.QUANTITY) +
+                                    " WHERE " +
+                                    "inventoryId = " + qqr.getLong(InventoryProduct.SRC_INVENTORY_ID) +
+                                    " AND " +
+                                    "productId = " + qqr.getLong(InventoryProduct.PRODUCT_ID), jdbcClient)
+                                .map(v -> (JsonObject) qqr))
+                            .mapToPromise(
+                                req -> multiUpdate(ImmutableList.of(
+                                    "DELETE FROM `inventoryProducts` WHERE inventoryId = " + req.getLong(InventoryProduct.INVENTORY_ID) + " " +
+                                        "and productId = " + req.getLong(InventoryProduct.PRODUCT_ID),
+                                    "INSERT INTO `inventoryProducts`" +
+                                        "(`inventoryId`, `productId`, `quantity`, `available`, `unitId`) VALUES " +
+                                        "(" + req.getLong(InventoryProduct.INVENTORY_ID) + " " +
+                                        "," + req.getLong(InventoryProduct.PRODUCT_ID) + " " +
+                                        "," + req.getDouble(InventoryProduct.NEQ_QUANTITY) + " " +
+                                        "," + 0 + " " +
+                                        "," + req.getLong(InventoryProduct.UNIT_ID) + ")"
+                                ), jdbcClient).map(vk -> val3))
+                            .then(message::reply)
+                            .error(e -> ExceptionUtil.fail(message, e)))
+                    .error(e -> ExceptionUtil.fail(message, e))
+            )
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }

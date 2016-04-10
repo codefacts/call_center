@@ -10,7 +10,6 @@ import com.imslbd.call_center.template.js.WorkDayDetailsJS;
 import com.imslbd.call_center.template.page.PageTmptBuilder;
 import com.imslbd.call_center.template.page.StartPage;
 import com.imslbd.call_center.util.MyUtil;
-import io.crm.QC;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
 import io.crm.util.Util;
@@ -28,8 +27,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -180,7 +177,7 @@ public class CallController {
         router.post(MyUris.CALL_CREATE.value).handler(ctx -> Promises.from()
             .decide(v -> !(ALLOW_HOSTS.contains(ctx.request().remoteAddress().host())
                 || ALLOW_MASKS.stream().filter(m -> ctx.request().remoteAddress()
-                .host().startsWith(m)).findAny().isPresent()) ? "DENY" : Decision.OTHERWISE)
+                .host().startsWith(m)).findAny().isPresent()) ? "DENY" : Decision.CONTINUE)
             .on("DENY", v -> {
                 ctx.response().setStatusCode(HttpResponseStatus.UNAUTHORIZED.code());
                 ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, Controllers.APPLICATION_JSON);
@@ -189,7 +186,7 @@ public class CallController {
                     .put("url", ctx.request().absoluteURI())
                     .put("host", ctx.request().remoteAddress().host()).encodePrettily());
             })
-            .otherwise(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CALL_CREATE, WebUtils.toJson(ctx.request()
+            .contnue(v -> Util.<JsonObject>send(vertx.eventBus(), MyEvents.CALL_CREATE, WebUtils.toJson(ctx.request()
                 .params())
                 .put("DATASOURCE", Util.as(ctx.session().get(gv.campaign), JsonObject.class).getInteger("id"))
                 .put("baseUrl", ctx.session().get("baseUrl").toString()))

@@ -29143,8 +29143,27 @@ var Events = require('./Events');
 var $ = require('jquery');
 //var jwt = require('jsonwebtoken');
 
+var localStorage = window.localStorage;
+
 var token = null;
 var user = null;
+var date = null;
+//Retrieve
+if (!!localStorage) {
+
+    date = !!localStorage.getItem("date") ? new Date(localStorage.getItem("date")) : null;
+
+    if (!!date && date.getDate() == new Date().getDate()) {
+        token = localStorage.getItem("token");
+        user = localStorage.getItem("user");
+        try {
+            user = JSON.parse(user);
+        } catch (e) {
+            token = null;
+            user = null;
+        }
+    }
+}
 
 var AuthService = function () {
     function AuthService() {
@@ -29169,6 +29188,13 @@ var AuthService = function () {
                         resolve(user);
 
                         console.log("LOGIN_SUCCESS", JSON.stringify({ token: token, user: user }));
+
+                        //Store
+                        if (!!localStorage) {
+                            localStorage.setItem("token", token);
+                            localStorage.setItem("user", JSON.stringify(user));
+                            localStorage.setItem("date", new Date().toJSON());
+                        }
                     },
                     error: reject
                 });
@@ -29461,6 +29487,13 @@ eb.onclose = function () {
 var send = eb.send;
 
 eb.send = function (address, message, headers, callback) {
+
+    if (eb.state != EventBus.OPEN) {
+        window.alert("Disconnected from server. Please login again.");
+        location.href = Uris.toAbsoluteUri(Uris.LOGIN_URI);
+        callback(new Error("Invalid state error."), null);
+        return;
+    }
 
     headers = headers || {};
     if (authSerice.isLoggedIn()) {
@@ -29850,6 +29883,7 @@ var AddAnotherProductForm = React.createClass({
     getDefaultProps: function getDefaultProps() {
         return {
             products: [{ id: 1, name: 'op-1' }, { id: 2, name: 'op-2' }, { id: 3, name: 'op-3' }],
+            productsUnitWisePrice: {},
             units: [{ id: 1, name: 'op-1' }, { id: 2, name: 'op-2' }, { id: 3, name: 'op-3' }],
             product: {
                 productId: null,
@@ -29913,7 +29947,7 @@ var AddAnotherProductForm = React.createClass({
                         ),
                         React.createElement(Select, { id: 'unitId', name: 'unitId', value: product.unitId,
                             initialOption: { id: 0, name: 'Select Unit' },
-                            options: $this.props.units || [],
+                            options: $this.props.units,
                             onChange: $this.props.onChange })
                     )
                 )
@@ -29962,26 +29996,13 @@ var AddRemoveEditForm = React.createClass({
                 { className: 'form-group' },
                 React.createElement(
                     'label',
-                    null,
-                    'Current Quantity'
+                    { forHtml: 'quantity' },
+                    'New Quantity'
                 ),
                 React.createElement('input', { type: 'text', className: 'form-control', id: 'quantity',
                     style: { width: '130px' },
-                    placeholder: '',
-                    value: item.quantity, readOnly: true })
-            ),
-            React.createElement(
-                'div',
-                { className: 'form-group' },
-                React.createElement(
-                    'label',
-                    { forHtml: '__quantity__' },
-                    'New Quantity'
-                ),
-                React.createElement('input', { type: 'text', className: 'form-control', id: '__quantity__',
-                    style: { width: '130px' },
                     placeholder: placeholder,
-                    name: '__quantity__', value: item.__quantity__, onChange: $this.props.onChange })
+                    name: 'quantity', value: item.quantity, onChange: $this.props.onChange })
             ),
             !$this.props.units ? null : React.createElement(
                 'div',
@@ -30052,7 +30073,8 @@ var AddRemoveEditProducts = React.createClass({
             }],
             products: [],
             productsById: {},
-            product: {}
+            product: {},
+            productsUnitWisePrice: {}
         };
     },
     componentDidMount: function componentDidMount() {
@@ -30085,6 +30107,10 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.findAll().then(function (rsp) {
             return $this.setState({ inventories: rsp.data });
         });
+
+        var productPromise2 = productService.unitWisePrice().then(function (unitWisePrice) {
+            return { productsUnitWisePrice: unitWisePrice };
+        });
     },
     componentWillUnmount: function componentWillUnmount() {},
     render: function render() {
@@ -30098,28 +30124,28 @@ var AddRemoveEditProducts = React.createClass({
         var inventory = $this.state.inventory || {};
         return React.createElement(
             'div',
-            { classNameName: 'panel panel-default' },
+            { className: 'panel panel-default' },
             React.createElement(
                 'div',
-                { classNameName: 'panel-heading' },
+                { className: 'panel-heading' },
                 React.createElement(
                     'div',
-                    { classNameName: 'row' },
+                    { className: 'row' },
                     React.createElement(
                         'div',
-                        { classNameName: 'col-md-6' },
+                        { className: 'col-md-6' },
                         React.createElement(
                             'h3',
-                            { classNameName: 'panel-title' },
+                            { className: 'panel-title' },
                             'Add/Remove/Edit Products'
                         )
                     ),
                     React.createElement(
                         'div',
-                        { classNameName: 'col-md-6' },
+                        { className: 'col-md-6' },
                         React.createElement(
                             'span',
-                            { classNameName: 'btn btn-success pull-right', onClick: $this.addAnotherProduct },
+                            { className: 'btn btn-success pull-right', onClick: $this.addAnotherProduct },
                             'Add another product'
                         )
                     )
@@ -30131,7 +30157,7 @@ var AddRemoveEditProducts = React.createClass({
                 'ID: ',
                 React.createElement(
                     'strong',
-                    { style: { fontWeight: 'bold' }, classNameName: 'text-primary' },
+                    { style: { fontWeight: 'bold' }, className: 'text-primary' },
                     inventory.id
                 ),
                 ' | ',
@@ -30139,7 +30165,7 @@ var AddRemoveEditProducts = React.createClass({
                 React.createElement(
                     'strong',
                     { style: { fontWeight: 'bold' },
-                        classNameName: 'text-primary' },
+                        className: 'text-primary' },
                     inventory.name
                 )
             ),
@@ -30212,11 +30238,12 @@ var AddRemoveEditProducts = React.createClass({
                 return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
                     title: React.createElement(
                         'h3',
-                        { classNameName: 'modal-title text-primary' },
+                        { className: 'modal-title text-primary' },
                         'Add another product'
                     ),
                     body: React.createElement(AddAnotherProductForm, {
                         products: $this.filterProducts($this.state.products),
+                        productsUnitWisePrice: $this.state.productsUnitWisePrice,
                         units: $this.state.units,
                         product: $this.state.product,
                         onChange: $this.onProductChange,
@@ -30227,13 +30254,13 @@ var AddRemoveEditProducts = React.createClass({
                         null,
                         React.createElement(
                             'span',
-                            { classNameName: 'btn btn-primary btn-lg pull-right',
+                            { className: 'btn btn-primary btn-lg pull-right',
                                 onClick: $this.doAddAnother },
                             'Add'
                         ),
                         React.createElement(
                             'span',
-                            { classNameName: 'btn btn-danger btn-lg pull-right', style: { marginRight: '10px' },
+                            { className: 'btn btn-danger btn-lg pull-right', style: { marginRight: '10px' },
                                 onClick: $this.closeModal },
                             'Cancel'
                         )
@@ -30255,7 +30282,7 @@ var AddRemoveEditProducts = React.createClass({
                 return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
                     title: React.createElement(
                         'h3',
-                        { classNameName: 'modal-title text-primary' },
+                        { className: 'modal-title text-primary' },
                         'Add another product'
                     ),
                     body: React.createElement(AddAnotherProductForm, {
@@ -30270,13 +30297,13 @@ var AddRemoveEditProducts = React.createClass({
                         null,
                         React.createElement(
                             'span',
-                            { classNameName: 'btn btn-primary btn-lg pull-right',
+                            { className: 'btn btn-primary btn-lg pull-right',
                                 onClick: $this.doAddAnother },
                             'Add'
                         ),
                         React.createElement(
                             'span',
-                            { classNameName: 'btn btn-danger btn-lg pull-right', style: { marginRight: '10px' },
+                            { className: 'btn btn-danger btn-lg pull-right', style: { marginRight: '10px' },
                                 onClick: $this.closeModal },
                             'Cancel'
                         )
@@ -30300,7 +30327,7 @@ var AddRemoveEditProducts = React.createClass({
                     return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
                         title: React.createElement(
                             'h3',
-                            { classNameName: 'modal-title text-primary' },
+                            { className: 'modal-title text-primary' },
                             'Add another product'
                         ),
                         body: React.createElement(AddAnotherProductForm, {
@@ -30315,13 +30342,13 @@ var AddRemoveEditProducts = React.createClass({
                             null,
                             React.createElement(
                                 'span',
-                                { classNameName: 'btn btn-primary btn-lg pull-right',
+                                { className: 'btn btn-primary btn-lg pull-right',
                                     onClick: $this.doAddAnother },
                                 'Add'
                             ),
                             React.createElement(
                                 'span',
-                                { classNameName: 'btn btn-danger btn-lg pull-right', style: { marginRight: '10px' },
+                                { className: 'btn btn-danger btn-lg pull-right', style: { marginRight: '10px' },
                                     onClick: $this.closeModal },
                                 'Cancel'
                             )
@@ -30363,21 +30390,21 @@ var AddRemoveEditProducts = React.createClass({
         var $this = this;
         return React.createElement(
             'div',
-            { classNameName: 'row' },
+            { className: 'row' },
             React.createElement(
                 'div',
-                { classNameName: 'col-md-3' },
-                React.createElement('input', { classNameName: 'form-control', type: 'number', name: '__quantity__', value: item.__quantity__,
+                { className: 'col-md-3' },
+                React.createElement('input', { className: 'form-control', type: 'number', name: '__quantity__', value: item.__quantity__,
                     onChange: function onChange(e) {
                         $this.onQuantityChange(e, item);
                     } })
             ),
             React.createElement(
                 'div',
-                { classNameName: 'col-md-9' },
+                { className: 'col-md-9' },
                 React.createElement(
                     'span',
-                    { classNameName: 'btn btn-primary', onClick: function onClick() {
+                    { className: 'btn btn-primary', onClick: function onClick() {
                             return $this.doAdd(item);
                         },
                         style: { marginRight: '5px' } },
@@ -30385,7 +30412,7 @@ var AddRemoveEditProducts = React.createClass({
                 ),
                 React.createElement(
                     'span',
-                    { classNameName: 'btn btn-success', onClick: function onClick() {
+                    { className: 'btn btn-success', onClick: function onClick() {
                             return $this.doRemove(item);
                         },
                         style: { marginRight: '5px' } },
@@ -30393,7 +30420,7 @@ var AddRemoveEditProducts = React.createClass({
                 ),
                 React.createElement(
                     'span',
-                    { classNameName: 'btn btn-danger', onClick: function onClick() {
+                    { className: 'btn btn-danger', onClick: function onClick() {
                             return $this.editProduct(item);
                         },
                         style: { marginRight: '5px' } },
@@ -30401,7 +30428,7 @@ var AddRemoveEditProducts = React.createClass({
                 ),
                 React.createElement(
                     'span',
-                    { classNameName: 'btn btn-info', onClick: function onClick() {
+                    { className: 'btn btn-info', onClick: function onClick() {
                             return $this.transfer(item);
                         },
                         style: { marginRight: '5px' } },
@@ -30409,7 +30436,7 @@ var AddRemoveEditProducts = React.createClass({
                 ),
                 React.createElement(
                     'span',
-                    { classNameName: 'btn btn-info', onClick: function onClick() {
+                    { className: 'btn btn-info', onClick: function onClick() {
                             return $this.bring(item);
                         },
                         style: { marginRight: '5px' } },
@@ -30417,62 +30444,16 @@ var AddRemoveEditProducts = React.createClass({
                 ),
                 React.createElement(
                     'span',
-                    { classNameName: 'btn btn-danger pull-right',
+                    { className: 'btn btn-danger pull-right',
                         onClick: function onClick(e) {
                             $this.removeItem(item);
                         } },
-                    React.createElement('span', { classNameName: 'glyphicon glyphicon-remove', 'aria-hidden': 'true' })
+                    React.createElement('span', { className: 'glyphicon glyphicon-remove', 'aria-hidden': 'true' })
                 )
             )
         );
     },
 
-    addProduct: function addProduct() {
-        var $this = this;
-        this.setState({
-            createModal: function createModal() {
-                return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
-                    title: React.createElement(
-                        'h3',
-                        { classNameName: 'modal-title text-primary' },
-                        'Add'
-                    ),
-                    body: React.createElement(AddRemoveEditForm, {
-                        placeholder: 'Add',
-                        onSubmit: $this.doAdd,
-                        submitButton: React.createElement('input', { type: 'submit', classNameName: 'btn btn-primary', value: 'Add' }) }),
-                    footer: React.createElement(
-                        'span',
-                        { classNameName: 'btn btn-danger', onClick: $this.closeModal },
-                        'Cancel'
-                    )
-                });
-            }
-        });
-    },
-    removeProduct: function removeProduct(item) {
-        var $this = this;
-        this.setState({
-            createModal: function createModal() {
-                return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
-                    title: React.createElement(
-                        'h3',
-                        { classNameName: 'modal-title text-success' },
-                        'Remove'
-                    ),
-                    body: React.createElement(AddRemoveEditForm, {
-                        placeholder: 'Remove',
-                        onSubmit: $this.doRemove,
-                        submitButton: React.createElement('input', { type: 'submit', classNameName: 'btn btn-success', value: 'Remove' }) }),
-                    footer: React.createElement(
-                        'span',
-                        { classNameName: 'btn btn-danger', onClick: $this.closeModal },
-                        'Cancel'
-                    )
-                });
-            }
-        });
-    },
     editProduct: function editProduct(item) {
         var $this = this;
         this.setState({
@@ -30480,7 +30461,7 @@ var AddRemoveEditProducts = React.createClass({
                 return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
                     title: React.createElement(
                         'h3',
-                        { classNameName: 'modal-title text-danger' },
+                        { className: 'modal-title text-danger' },
                         'Edit'
                     ),
                     body: React.createElement(AddRemoveEditForm, {
@@ -30495,10 +30476,10 @@ var AddRemoveEditProducts = React.createClass({
                             e.preventDefault();
                             $this.doEdit(item);
                         },
-                        submitButton: React.createElement('input', { type: 'submit', classNameName: 'btn btn-lg btn-danger', value: 'Edit' }) }),
+                        submitButton: React.createElement('input', { type: 'submit', className: 'btn btn-lg btn-danger', value: 'Edit' }) }),
                     footer: React.createElement(
                         'span',
-                        { classNameName: 'btn btn-danger', onClick: $this.closeModal },
+                        { className: 'btn btn-danger', onClick: $this.closeModal },
                         'Cancel'
                     )
                 });
@@ -30506,70 +30487,111 @@ var AddRemoveEditProducts = React.createClass({
         });
     },
 
-    transfer: function transfer(inventory) {
+    transfer: function transfer(inv) {
         var $this = this;
 
         var body = React.createElement(
             'form',
             { onSubmit: function onSubmit(e) {
-                    e.preventDefault();$this.doTransfer(inventory);
+                    e.preventDefault();$this.doTransfer(inv);
                 } },
             React.createElement(
                 'div',
-                { className: 'form-group' },
+                { className: 'row' },
                 React.createElement(
-                    'label',
-                    { forHtml: 'quantity' },
-                    'Quantity'
-                ),
-                React.createElement('input', { type: 'number', className: 'form-control',
-                    id: 'quantity', name: 'quantity', value: inventory.__quantity__ })
-            ),
-            React.createElement(
-                'div',
-                { className: 'form-group' },
-                React.createElement(
-                    'label',
-                    { forHtml: 'inventoryId' },
-                    'Invenotry'
-                ),
-                React.createElement(
-                    'select',
-                    { className: 'form-control',
-                        id: 'inventoryId', name: 'inventoryId', value: inventory.__transferTo__ },
+                    'div',
+                    { className: 'col-md-6' },
                     React.createElement(
-                        'option',
-                        { value: 0 },
-                        'Select Inventory'
-                    ),
-                    $this.state.inventories.map(function (inv) {
+                        'div',
+                        { className: 'form-group' },
                         React.createElement(
-                            'option',
-                            { value: inv.id },
-                            inv.name
-                        );
-                    })
+                            'label',
+                            { forHtml: '__quantity__' },
+                            'Quantity'
+                        ),
+                        React.createElement('input', { type: 'number', className: 'form-control',
+                            id: '__quantity__', name: '__quantity__', value: inv.__quantity__,
+                            onChange: function onChange(e) {
+                                return $this.onInvenotryChange(e, inv);
+                            } })
+                    )
+                ),
+                React.createElement(
+                    'div',
+                    { className: 'col-md-6' },
+                    React.createElement(
+                        'div',
+                        { className: 'form-group' },
+                        React.createElement(
+                            'label',
+                            { forHtml: 'unitId' },
+                            'Unit'
+                        ),
+                        React.createElement('input', { type: 'text', className: 'form-control',
+                            id: 'unitId',
+                            value: $this.state.unitsById[inv.unitId].name,
+                            readOnly: true })
+                    )
+                ),
+                React.createElement(
+                    'div',
+                    { className: 'col-md-12' },
+                    React.createElement(
+                        'div',
+                        { className: 'form-group' },
+                        React.createElement(
+                            'label',
+                            { forHtml: 'destInventoryId' },
+                            'Transfer to invenotry'
+                        ),
+                        React.createElement(
+                            'select',
+                            { className: 'form-control',
+                                id: 'destInventoryId', name: 'destInventoryId', value: inv.__transferTo__,
+                                onChange: function onChange(e) {
+                                    return $this.onInvenotryChange(e, inv);
+                                } },
+                            React.createElement(
+                                'option',
+                                { value: 0 },
+                                'Select Inventory'
+                            ),
+                            $this.state.inventories.map(function (inventory) {
+                                if (inv.inventoryId == inventory.id) {
+                                    return null;
+                                }
+                                return React.createElement(
+                                    'option',
+                                    { key: inventory.id, value: inventory.id },
+                                    inventory.name
+                                );
+                            })
+                        )
+                    )
                 )
             ),
             React.createElement(
                 'button',
-                { type: 'submit', className: 'btn btn-primary btn-lg' },
+                { type: 'submit', className: 'btn btn-primary btn-lg', onSubmit: function onSubmit(e) {
+                        return $this.doTransfer(inv);
+                    } },
                 'Transfer'
             )
         );
 
         this.setState({
+            isModalOpen: true,
             createModal: function createModal() {
-                return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
+                return React.createElement(Modal, { isOpen: $this.state.isModalOpen, onClose: $this.closeModal,
                     title: React.createElement(
                         'h3',
-                        { classNameName: 'modal-title text-danger' },
+                        { className: 'modal-title text-danger' },
                         'Transfer to another inventory'
                     ),
                     body: body,
                     footer: React.createElement(
                         'span',
-                        { classNameName: 'btn btn-danger', onClick: $this.closeModal },
+                        { className: 'btn btn-danger', onClick: $this.closeModal },
                         'Cancel'
                     )
                 });
@@ -30577,27 +30599,122 @@ var AddRemoveEditProducts = React.createClass({
         });
     },
 
-    bring: function bring(inventory) {
+    bring: function bring(inv) {
         var $this = this;
+
+        var body = React.createElement(
+            'form',
+            { onSubmit: function onSubmit(e) {
+                    e.preventDefault();$this.doBring(inv);
+                } },
+            React.createElement(
+                'div',
+                { className: 'row' },
+                React.createElement(
+                    'div',
+                    { className: 'col-md-6' },
+                    React.createElement(
+                        'div',
+                        { className: 'form-group' },
+                        React.createElement(
+                            'label',
+                            { forHtml: '__quantity__' },
+                            'Quantity'
+                        ),
+                        React.createElement('input', { type: 'number', className: 'form-control',
+                            id: '__quantity__', name: '__quantity__', value: inv.__quantity__,
+                            onChange: function onChange(e) {
+                                return $this.onInvenotryChange(e, inv);
+                            } })
+                    )
+                ),
+                React.createElement(
+                    'div',
+                    { className: 'col-md-6' },
+                    React.createElement(
+                        'div',
+                        { className: 'form-group' },
+                        React.createElement(
+                            'label',
+                            { forHtml: 'unitId' },
+                            'Unit'
+                        ),
+                        React.createElement('input', { type: 'text', className: 'form-control',
+                            id: 'unitId',
+                            value: $this.state.unitsById[inv.unitId].name,
+                            readOnly: true })
+                    )
+                ),
+                React.createElement(
+                    'div',
+                    { className: 'col-md-12' },
+                    React.createElement(
+                        'div',
+                        { className: 'form-group' },
+                        React.createElement(
+                            'label',
+                            { forHtml: 'srcInventoryId' },
+                            'Bring from inventory'
+                        ),
+                        React.createElement(
+                            'select',
+                            { className: 'form-control',
+                                id: 'srcInventoryId', name: 'srcInventoryId', value: inv.__transferTo__,
+                                onChange: function onChange(e) {
+                                    return $this.onInvenotryChange(e, inv);
+                                } },
+                            React.createElement(
+                                'option',
+                                { value: 0 },
+                                'Select Inventory'
+                            ),
+                            $this.state.inventories.map(function (inventory) {
+                                if (inv.inventoryId == inventory.id) {
+                                    return null;
+                                }
+                                return React.createElement(
+                                    'option',
+                                    { key: inventory.id, value: inventory.id },
+                                    inventory.name
+                                );
+                            })
+                        )
+                    )
+                )
+            ),
+            React.createElement(
+                'button',
+                { type: 'submit', className: 'btn btn-primary btn-lg', onSubmit: function onSubmit(e) {
+                        return $this.doBring(inv);
+                    } },
+                'Bring'
+            )
+        );
+
         this.setState({
+            isModalOpen: true,
             createModal: function createModal() {
-                return React.createElement(Modal, { isOpen: true, onClose: $this.closeModal,
+                return React.createElement(Modal, { isOpen: $this.state.isModalOpen, onClose: $this.closeModal,
                     title: React.createElement(
                         'h3',
-                        { classNameName: 'modal-title text-danger' },
-                        'Transfer to another inventory'
+                        { className: 'modal-title text-danger' },
+                        'Bring from another inventory'
                     ),
-                    body: '',
+                    body: body,
                     footer: React.createElement(
                         'span',
-                        { classNameName: 'btn btn-danger', onClick: $this.closeModal },
+                        { className: 'btn btn-danger', onClick: $this.closeModal },
                         'Cancel'
                     )
                 });
             }
         });
     },
-
+    onInvenotryChange: function onInvenotryChange(e, inv) {
+        var $this = this;
+        inv[e.target.name] = e.target.value;
+        $this.setState({ inventoryProducts: $this.state.inventoryProducts });
+    },
     closeModal: function closeModal() {
         var $this = this;
         this.setState({
@@ -30631,7 +30748,7 @@ var AddRemoveEditProducts = React.createClass({
     doEdit: function doEdit(item) {
         var $this = this;
 
-        inventoryService.editProductQuantity(item.id, item.__quantity__, item.unitId).then(function () {
+        inventoryService.editProductQuantity(item.id, item.quantity, item.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
             return $this.setState({ inventoryProducts: rsp.data });
@@ -30639,7 +30756,26 @@ var AddRemoveEditProducts = React.createClass({
 
         this.closeModal();
     },
-    doTransfer: function doTransfer(inventory) {}
+    doTransfer: function doTransfer(inv) {
+        var $this = this;
+        inventoryService.transferTo(inv.inventoryId, inv.destInventoryId, inv.productId, inv.__quantity__, inv.unitId).then(function () {
+            return inventoryService.findAllProducts($this.props.params.id);
+        }).then(function (rsp) {
+            return $this.setState({ inventoryProducts: rsp.data });
+        }).then(function () {
+            return $this.setState({ isModalOpen: false });
+        });
+    },
+    doBring: function doBring(inv) {
+        var $this = this;
+        inventoryService.transferTo(inv.srcInventoryId, inv.inventoryId, inv.productId, inv.__quantity__, inv.unitId).then(function () {
+            return inventoryService.findAllProducts($this.props.params.id);
+        }).then(function (rsp) {
+            return $this.setState({ inventoryProducts: rsp.data });
+        }).then(function () {
+            return $this.setState({ isModalOpen: false });
+        });
+    }
 });
 
 module.exports = AddRemoveEditProducts;
@@ -30681,7 +30817,10 @@ var Events = {
     INVENTORY_PRODUCT_INSERTED: 'INVENTORY_PRODUCT_INSERTED',
     INVENTORY_PRODUCT_DELETED: 'INVENTORY_PRODUCT_DELETED',
     PRODUCT_ADDED_TO_INVENTORY: 'PRODUCT_ADDED_TO_INVENTORY',
-    PRODUCT_REMOVED_FROM_INVENTORY: 'PRODUCT_REMOVED_FROM_INVENTORY'
+    PRODUCT_REMOVED_FROM_INVENTORY: 'PRODUCT_REMOVED_FROM_INVENTORY',
+    INVENTORY_PRODUCT_BROUGHT: 'INVENTORY_PRODUCT_BROUGHT',
+    INVENTORY_PRODUCT_TRANSFERRED: 'INVENTORY_PRODUCT_TRANSFERRED',
+    INVENTORY_PRODUCT_QUANTITY_EDITED: 'INVENTORY_PRODUCT_QUANTITY_EDITED'
 };
 
 module.exports = Events;
@@ -31136,7 +31275,28 @@ var InventoryService = function () {
 
                     resolve(msg.body);
 
-                    ee.emit(Events.EDIT_INVENTORY_PRODUCT_QUANTITY, msg.body);
+                    ee.emit(Events.INVENTORY_PRODUCT_QUANTITY_EDITED, msg.body);
+                });
+            });
+        }
+    }, {
+        key: 'transferTo',
+        value: function transferTo(srcInventoryId, destInventoryId, productId, quantity, unitId) {
+            var req = { srcInventoryId: srcInventoryId, destInventoryId: destInventoryId, productId: productId, quantity: quantity, unitId: unitId };
+            console.log("SEND." + ServerEvents.TRANSFER_PRODUCT_TO_INVENTORY, req);
+
+            return new Promise(function (resolve, reject) {
+                eb.send(ServerEvents.TRANSFER_PRODUCT_TO_INVENTORY, req, null, function (err, msg) {
+                    if (!!err || !!msg.failureCode || !!(msg.body || {}).responseCode) {
+                        reject(err || msg);
+
+                        console.log("Error " + ServerEvents.TRANSFER_PRODUCT_TO_INVENTORY, err || msg);
+                        return;
+                    }
+
+                    resolve(msg.body);
+
+                    ee.emit(Events.INVENTORY_PRODUCT_TRANSFERRED, msg.body);
                 });
             });
         }
@@ -31620,7 +31780,9 @@ var ServerEvents = {
     DELETE_INVENTORY_PRODUCT: 'DELETE_INVENTORY_PRODUCT',
     ADD_PRODUCT_TO_INVENTORY: 'ADD_PRODUCT_TO_INVENTORY',
     REMOVE_PRODUCT_FROM_INVENTORY: 'REMOVE_PRODUCT_FROM_INVENTORY',
-    EDIT_INVENTORY_PRODUCT_QUANTITY: 'EDIT_INVENTORY_PRODUCT_QUANTITY'
+    EDIT_INVENTORY_PRODUCT_QUANTITY: 'EDIT_INVENTORY_PRODUCT_QUANTITY',
+    TRANSFER_PRODUCT_TO_INVENTORY: 'TRANSFER_PRODUCT_TO_INVENTORY',
+    BRING_PRODUCT_FROM_INVENTORY: 'BRING_PRODUCT_FROM_INVENTORY'
 };
 
 module.exports = ServerEvents;

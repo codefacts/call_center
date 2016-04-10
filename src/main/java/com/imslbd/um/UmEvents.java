@@ -56,6 +56,7 @@ public class UmEvents {
     public static final String DELETE_SELL = "DELETE_SELL";
     public static final java.lang.String FIND_SELL_DECOMPOSED = "FIND_SELL_DECOMPOSED";
     public static final java.lang.String CHANGE_PASSWORD = "CHANGE_PASSWORD";
+    public static final java.lang.String TRANSFER_PRODUCT_TO_INVENTORY = "TRANSFER_PRODUCT_TO_INVENTORY";
 
     public static final String um(String des) {
         return "UM." + des;

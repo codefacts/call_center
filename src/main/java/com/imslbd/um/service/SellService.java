@@ -42,10 +42,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.imslbd.um.UmUtils.limitOffset;
-import static com.imslbd.um.service.Services.DATA;
 import static com.imslbd.um.service.Services.converters;
 
 /**
@@ -289,7 +287,7 @@ public class SellService {
                         "join units u on su.unitId = u.id " +
                         "where s.id = " + id + " " +
                         "group by s.id, su.id", jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? SELL_NOT_FOUND : Decision.OTHERWISE)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? SELL_NOT_FOUND : Decision.CONTINUE)
                     .on(SELL_NOT_FOUND,
                         rs -> {
                             message.reply(
@@ -306,7 +304,7 @@ public class SellService {
                                         Util.toString(UmErrorCodes.INVENTORY_NOT_FOUND.code()))
                             );
                         })
-                    .otherwise(
+                    .contnue(
                         rs -> Promises.from(rs)
                             .map(rset -> rset.getResults())
                             .map(this::composeSell)
@@ -335,7 +333,7 @@ public class SellService {
                     List<ValidationResult> validationResults = validationPipeline.validate(inventory);
                     return validationResults != null
                         ? Decision.of(VALIDATION_ERROR, validationResults)
-                        : Decision.of(Decision.OTHERWISE, inventory);
+                        : Decision.of(Decision.CONTINUE, inventory);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -360,7 +358,7 @@ public class SellService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     final JsonObject sell = (JsonObject) rsp;
 
@@ -431,7 +429,7 @@ public class SellService {
             .decideAndMap(
                 inventory -> {
                     List<ValidationResult> validationResults = validationPipeline.validate(inventory);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, inventory);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.CONTINUE, inventory);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -455,7 +453,7 @@ public class SellService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     final JsonObject sell = (JsonObject) rsp;
                     final long id = sell.getLong(Sell.ID);

@@ -18,7 +18,6 @@ import io.crm.pipelines.validator.ValidationPipeline;
 import io.crm.pipelines.validator.ValidationResult;
 import io.crm.pipelines.validator.ValidationResultBuilder;
 import io.crm.pipelines.validator.Validator;
-import io.crm.pipelines.validator.composer.FieldValidatorComposer;
 import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
@@ -215,7 +214,7 @@ public class UserService {
             .callable(() -> message.body())
             .then(
                 id -> WebUtils.query("select * from users where id = " + id, jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? USER_NOT_FOUND : Decision.OTHERWISE)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? USER_NOT_FOUND : Decision.CONTINUE)
                     .on(USER_NOT_FOUND,
                         rs -> {
                             message.reply(
@@ -231,7 +230,7 @@ public class UserService {
                                     .addHeader(Services.RESPONSE_CODE, Util.toString(UmErrorCodes.USER_NOT_FOUND.code()))
                             );
                         })
-                    .otherwise(
+                    .contnue(
                         rs -> Promises.from(rs)
                             .map(rset -> rset.getRows().get(0))
                             .map(user -> {
@@ -251,7 +250,7 @@ public class UserService {
             .decideAndMap(
                 user -> {
                     List<ValidationResult> validationResults = createValidationPipeline.validate(user);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.CONTINUE, user);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -276,7 +275,7 @@ public class UserService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     JsonObject user = (JsonObject) rsp;
                     WebUtils
@@ -294,7 +293,7 @@ public class UserService {
             .decideAndMap(
                 user -> {
                     List<ValidationResult> validationResults = validationPipeline.validate(user);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.CONTINUE, user);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -318,7 +317,7 @@ public class UserService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     JsonObject user = (JsonObject) rsp;
                     final Long id = user.getLong(User.ID, 0L);
@@ -345,7 +344,7 @@ public class UserService {
             .decideAndMap(
                 user -> {
                     List<ValidationResult> validationResults = changePasswordValidationPipeline.validate(user);
-                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.OTHERWISE, user);
+                    return validationResults != null ? Decision.of(VALIDATION_ERROR, validationResults) : Decision.of(Decision.CONTINUE, user);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -369,7 +368,7 @@ public class UserService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
 
                     Promises.callable(() -> (JsonObject) rsp)
@@ -385,7 +384,7 @@ public class UserService {
                                         ? PASSWORD_MISMATCH
                                         : !list.get(0).getString(0).equals(user.getString(User.CURRENT_PASSWORD))
                                         ? PASSWORD_MISMATCH
-                                        : Decision.OTHERWISE, user)))
+                                        : Decision.CONTINUE, user)))
                         .on(PASSWORD_MISMATCH,
                             rssp -> {
                                 ImmutableList<ValidationResult> validationResults = ImmutableList.of(
@@ -413,7 +412,7 @@ public class UserService {
                                         .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                                 );
                             })
-                        .otherwise(user -> {
+                        .contnue(user -> {
 
                             user = changePasswordIncludeExcludeTransformation.transform(user);
                             final Long id = user.getLong(User.ID, 0L);

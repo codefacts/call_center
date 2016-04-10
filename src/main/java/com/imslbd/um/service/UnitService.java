@@ -1,10 +1,8 @@
 package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.imslbd.call_center.MainVerticle;
-import com.imslbd.call_center.MyApp;
 import com.imslbd.um.*;
 import com.imslbd.um.model.Unit;
 import com.imslbd.um.model.User;
@@ -29,11 +27,9 @@ import io.vertx.ext.jdbc.JDBCClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * Created by shahadat on 3/27/16.
@@ -106,7 +102,7 @@ public class UnitService {
 
         WebUtils.query("select * from units where id = " + id, jdbcClient)
             .decideAndMap(rs -> Decision.of(rs.getNumRows() <= 0 ? NOT_FOUND
-                : Decision.OTHERWISE, rs))
+                : Decision.CONTINUE, rs))
             .on(NOT_FOUND,
                 resultSet ->
                     message.fail(UmErrorCodes.UNIT_NOT_FOUND.code(),
@@ -114,7 +110,7 @@ public class UnitService {
                             UmErrorCodes.UNIT_NOT_FOUND.messageCode(),
                             new JsonObject()
                                 .put(Unit.ID, id))))
-            .otherwise(
+            .contnue(
                 resultSet ->
                     message.reply(resultSet.getRows().get(0)))
             .error(e -> ExceptionUtil.fail(message, e))
@@ -168,7 +164,7 @@ public class UnitService {
             }
 
             WebUtils.update(Tables.units.name(), unitJson, unitJson.getLong("id"), jdbcClient)
-                .map(updateResult -> updateResult.getKeys().getLong(0))
+                .map(updateResult -> updateResult.getUpdated() > 0 ? unitJson.getLong("id") : 0)
                 .then(message::reply)
                 .error(e -> ExceptionUtil.fail(message, e))
                 .then(v -> vertx.eventBus().publish(UmEvents.UNIT_UPDATED, unitJson))

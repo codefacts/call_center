@@ -54,7 +54,7 @@ public class AuthController {
                 new JsonArray().add(username), jdbcClient)
                 .decide(
                     resultSet -> resultSet.getNumRows() <= 0
-                        ? USER_NOT_FOUND : Decision.OTHERWISE)
+                        ? USER_NOT_FOUND : Decision.CONTINUE)
                 .on(USER_NOT_FOUND, v -> {
                     ctx.response().setStatusCode(HttpResponseStatus.NOT_FOUND.code());
                     ctx.response().end(
@@ -62,7 +62,7 @@ public class AuthController {
                             .put("messageCode", USER_NOT_FOUND)
                             .put("message", "User not fount.").encode());
                 })
-                .otherwise(rs -> {
+                .contnue(rs -> {
                     final JsonObject user = rs.getRows().get(0);
 
                     if (!password.equals(user.getString(User.PASSWORD))) {

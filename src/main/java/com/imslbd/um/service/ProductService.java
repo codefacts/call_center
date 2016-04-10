@@ -41,8 +41,6 @@ import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +48,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static com.imslbd.um.service.Services.DATA;
 import static com.imslbd.um.service.Services.converters;
 
 /**
@@ -302,7 +299,7 @@ public class ProductService {
                         "join " + Tables.productUnitPrices + " up on up.productId = p.id " +
                         "join " + Tables.units + " u on u.id = up.unitId " +
                         "where p.id = " + id, jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? PRODUCT_NOT_FOUND : Decision.OTHERWISE)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? PRODUCT_NOT_FOUND : Decision.CONTINUE)
                     .on(PRODUCT_NOT_FOUND,
                         rs ->
                             message.reply(
@@ -318,7 +315,7 @@ public class ProductService {
                                     .addHeader(Services.RESPONSE_CODE,
                                         Util.toString(UmErrorCodes.PRODUCT_NOT_FOUND.code()))
                             ))
-                    .otherwise(
+                    .contnue(
                         rs -> Promises.from(rs)
                             .map(rset -> {
                                 JsonObject product = new JsonObject();
@@ -385,7 +382,7 @@ public class ProductService {
 
                     return validationResults != null
                         ? Decision.of(VALIDATION_ERROR, validationResults)
-                        : Decision.of(Decision.OTHERWISE, product);
+                        : Decision.of(Decision.CONTINUE, product);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -410,7 +407,7 @@ public class ProductService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     JsonObject product = (JsonObject) rsp;
 
@@ -482,7 +479,7 @@ public class ProductService {
 
                     return validationResults != null
                         ? Decision.of(VALIDATION_ERROR, validationResults)
-                        : Decision.of(Decision.OTHERWISE, product);
+                        : Decision.of(Decision.CONTINUE, product);
                 })
             .on(VALIDATION_ERROR,
                 rsp -> {
@@ -507,7 +504,7 @@ public class ProductService {
                             .addHeader(Services.RESPONSE_CODE, ErrorCodes.VALIDATION_ERROR.code() + "")
                     );
                 })
-            .otherwise(
+            .contnue(
                 rsp -> {
                     JsonObject product = (JsonObject) rsp;
 
@@ -594,7 +591,7 @@ public class ProductService {
                     "from " + TABLE_NAME + " p " +
                     "join " + Tables.productUnitPrices + " up on up.productId = p.id " +
                     "where p.id = " + id, jdbcClient)
-                    .decide(resultSet -> resultSet.getNumRows() < 1 ? PRODUCT_NOT_FOUND : Decision.OTHERWISE)
+                    .decide(resultSet -> resultSet.getNumRows() < 1 ? PRODUCT_NOT_FOUND : Decision.CONTINUE)
                     .on(PRODUCT_NOT_FOUND,
                         rs ->
                             message.reply(
@@ -610,7 +607,7 @@ public class ProductService {
                                     .addHeader(Services.RESPONSE_CODE,
                                         Util.toString(UmErrorCodes.PRODUCT_NOT_FOUND.code()))
                             ))
-                    .otherwise(
+                    .contnue(
                         rs -> Promises.from(rs)
                             .map(rset -> {
                                 JsonObject product = new JsonObject();

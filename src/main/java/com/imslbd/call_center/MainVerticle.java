@@ -148,6 +148,7 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.ADD_PRODUCT_TO_INVENTORY))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.REMOVE_PRODUCT_FROM_INVENTORY))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.EDIT_INVENTORY_PRODUCT_QUANTITY))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.TRANSFER_PRODUCT_TO_INVENTORY))
 
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_SELLS))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_SELL))
@@ -336,6 +337,7 @@ final public class MainVerticle extends AbstractVerticle {
                     eventBus.consumer(UmEvents.ADD_PRODUCT_TO_INVENTORY, inventoryService::addProduct);
                     eventBus.consumer(UmEvents.REMOVE_PRODUCT_FROM_INVENTORY, inventoryService::removeProduct);
                     eventBus.consumer(UmEvents.EDIT_INVENTORY_PRODUCT_QUANTITY, inventoryService::editProductQuantity);
+                    eventBus.consumer(UmEvents.TRANSFER_PRODUCT_TO_INVENTORY, inventoryService::transferTo);
                 }))
             .error(e -> LOGGER.error("Error creating UnitService", e))
         ;
