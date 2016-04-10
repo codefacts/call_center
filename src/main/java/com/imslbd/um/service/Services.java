@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  */
 public class Services {
     public static final Logger LOGGER = LoggerFactory.getLogger(Services.class);
-
+    public static final String AUTH_TOKEN = "authToken";
     public static final java.lang.String SIZE = "size";
     public static final String PAGE = "page";
     public static final String DATA = "data";

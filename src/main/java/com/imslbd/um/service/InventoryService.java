@@ -20,6 +20,7 @@ import io.crm.promise.Decision;
 import io.crm.promise.Promises;
 import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
+import io.crm.web.util.Convert;
 import io.crm.web.util.Converters;
 import io.crm.web.util.Pagination;
 import io.crm.web.util.WebUtils;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -238,7 +240,10 @@ public class InventoryService {
                 rsp -> {
                     JsonObject inventory = (JsonObject) rsp;
                     WebUtils
-                        .create(TABLE_NAME, inventory, jdbcClient)
+                        .create(TABLE_NAME,
+                            inventory
+                                .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()))
+                                .put(User.CREATED_BY, new JsonObject(message.headers().get(""))), jdbcClient)
                         .map(updateResult -> updateResult.getKeys().getLong(0))
                         .then(message::reply)
                         .error(e -> ExceptionUtil.fail(message, e));

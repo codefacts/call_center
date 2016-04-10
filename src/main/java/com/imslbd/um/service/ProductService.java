@@ -18,9 +18,11 @@ import io.crm.pipelines.transformation.impl.json.object.IncludeExcludeTransforma
 import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformation;
 import io.crm.pipelines.validator.ValidationPipeline;
 import io.crm.pipelines.validator.ValidationResult;
+import io.crm.pipelines.validator.ValidationResultBuilder;
 import io.crm.pipelines.validator.Validator;
 import io.crm.pipelines.validator.composer.FieldValidatorComposer;
 import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
+import io.crm.pipelines.validator.impl.JsonArrayValidator;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
 import io.crm.promise.intfs.Defer;
@@ -142,6 +144,20 @@ public class ProductService {
 
     private List<Validator<JsonObject>> validators() {
         List<Validator<JsonObject>> validators = new ArrayList<>();
+
+        validators.add(js -> {
+            JsonArray array = js.getJsonArray(Product.PRICES, Util.EMPTY_JSON_ARRAY);
+            if (array.size() <= 0) {
+                return new ValidationResultBuilder()
+                    .setErrorCode(UmErrorCodes.PRODUCT_PRICE_MISSING_VALIDATION_ERROR.code())
+                    .setField(Product.PRICES)
+                    .setValue(js.getValue(Product.PRICES))
+                    .createValidationResult();
+            } else {
+                return null;
+            }
+        });
+
         return new JsonObjectValidatorComposer(validators, Um.messageBundle)
             .field(Product.NAME,
                 fieldValidatorComposer -> fieldValidatorComposer

@@ -12,6 +12,7 @@ import io.crm.pipelines.transformation.impl.json.object.IncludeExcludeTransforma
 import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformation;
 import io.crm.pipelines.validator.ValidationPipeline;
 import io.crm.pipelines.validator.ValidationResult;
+import io.crm.pipelines.validator.ValidationResultBuilder;
 import io.crm.pipelines.validator.Validator;
 import io.crm.pipelines.validator.composer.FieldValidatorComposer;
 import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
@@ -179,6 +180,15 @@ public class SellService {
                 FieldValidatorComposer::stringType)
             .field(Sell.REMARKS,
                 FieldValidatorComposer::stringType);
+
+        validators.add(
+            js -> js.getJsonArray(Sell.SELL_UNITS, Util.EMPTY_JSON_ARRAY).size() > 0 ? null :
+                new ValidationResultBuilder()
+                    .setErrorCode(UmErrorCodes.SELL_ITEMS_MISSING_VALIDATON_ERROR.code())
+                    .setField(Sell.SELL_UNITS)
+                    .setValue(js.getValue(Sell.SELL_UNITS))
+                    .createValidationResult());
+
         return validatorComposer.getValidatorList();
     }
 

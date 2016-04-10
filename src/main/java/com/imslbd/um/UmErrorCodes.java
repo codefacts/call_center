@@ -10,7 +10,9 @@ public enum UmErrorCodes {
     USER_NOT_FOUND(error(), "user.not.found.error", errorHttp()),
     PRODUCT_NOT_FOUND(error(), "product.not.found.error", errorHttp()),
     INVENTORY_NOT_FOUND(error(), "inventory.not.found.error", errorHttp()),
-    TWO_PASSWORD_MISMATCH(validation(), "two.password.mismatch.validation.error", validationHttp());
+    TWO_PASSWORD_MISMATCH(validation(), "two.password.mismatch.validation.error", validationHttp()),
+    PRODUCT_PRICE_MISSING_VALIDATION_ERROR(validation(), "product.price.missing.validaton.error", validationHttp()),
+    SELL_ITEMS_MISSING_VALIDATON_ERROR(validation(), "sele.item.missing.validation.error", validationHttp());
     private final int code;
     private final String messageCode;
     private final int httpResponseCode;
