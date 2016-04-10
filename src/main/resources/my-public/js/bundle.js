@@ -30089,17 +30089,22 @@ var AddRemoveEditProducts = React.createClass({
             });
         });
         productService.findAllDecomposed().then(function (rsp) {
-            return $this.setState({
+            return {
                 products: rsp.data,
                 productsById: rsp.data.reduce(function (rr, pro) {
                     rr[pro.id] = pro;
                     return rr;
                 }, {})
+            };
+        }).then(function (state) {
+            return inventoryService.findAllProducts($this.props.params.id).then(function (rsp) {
+                state.inventoryProducts = rsp.data;
+                return state;
             });
+        }).then(function (state) {
+            return $this.setState($this.intercept(state));
         });
-        inventoryService.findAllProducts($this.props.params.id).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
-        });
+
         inventoryService.find($this.props.params.id).then(function (inventory) {
             return $this.setState({ inventory: inventory });
         });
@@ -30317,7 +30322,7 @@ var AddRemoveEditProducts = React.createClass({
         e.preventDefault();
         inventoryService.insertProduct($this.state.product, $this.state.inventory.id).then(function () {
             return inventoryService.findAllProducts($this.props.params.id).then(function (rsp) {
-                return $this.setState({ inventoryProducts: rsp.data });
+                return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
             });
         }).then(function () {
 
@@ -30376,15 +30381,15 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.deleteProduct(item.id).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
     },
     onQuantityChange: function onQuantityChange(e, item) {
         var $this = this;
         item.__quantity__ = e.target.value;
-        $this.setState({
+        $this.setState($this.intercept({
             inventoryProducts: $this.state.inventoryProducts
-        });
+        }));
     },
     formatAction: function formatAction(action, item) {
         var $this = this;
@@ -30713,7 +30718,7 @@ var AddRemoveEditProducts = React.createClass({
     onInvenotryChange: function onInvenotryChange(e, inv) {
         var $this = this;
         inv[e.target.name] = e.target.value;
-        $this.setState({ inventoryProducts: $this.state.inventoryProducts });
+        $this.setState($this.intercept({ inventoryProducts: $this.state.inventoryProducts }));
     },
     closeModal: function closeModal() {
         var $this = this;
@@ -30729,7 +30734,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.addProduct(item.id, item.__quantity__).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
 
         this.closeModal();
@@ -30740,7 +30745,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.removeProduct(item.id, item.__quantity__).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
 
         this.closeModal();
@@ -30751,7 +30756,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.editProductQuantity(item.id, item.quantity, item.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
 
         this.closeModal();
@@ -30761,7 +30766,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.transferTo(inv.inventoryId, inv.destInventoryId, inv.productId, inv.__quantity__, inv.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         }).then(function () {
             return $this.setState({ isModalOpen: false });
         });
@@ -30771,10 +30776,28 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.transferTo(inv.srcInventoryId, inv.inventoryId, inv.productId, inv.__quantity__, inv.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         }).then(function () {
             return $this.setState({ isModalOpen: false });
         });
+    },
+
+    intercept: function intercept(state) {
+        var $this = this;
+        var productsById = state.productsById || $this.state.productsById || {};
+
+        state.inventoryProducts = state.inventoryProducts || [];
+
+        //console.error("productsById", JSON.stringify(productsById));
+        //console.error("state.inventoryProducts", JSON.stringify(state.inventoryProducts));
+
+        state.inventoryProducts = state.inventoryProducts.sort(function (a, b) {
+            return (productsById[a.productId] || {}).name > (productsById[b.productId] || {}).name;
+        });
+
+        //console.error("sorted state.inventoryProducts", JSON.stringify(state.inventoryProducts));
+
+        return state;
     }
 });
 
