@@ -2,14 +2,8 @@ package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.imslbd.um.Tables;
-import com.imslbd.um.Um;
-import com.imslbd.um.UmErrorCodes;
-import com.imslbd.um.UmUtils;
-import com.imslbd.um.model.Product;
-import com.imslbd.um.model.ProductUnitPrice;
-import com.imslbd.um.model.Unit;
-import com.imslbd.um.model.User;
+import com.imslbd.um.*;
+import com.imslbd.um.model.*;
 import io.crm.ErrorCodes;
 import io.crm.pipelines.transformation.JsonTransformationPipeline;
 import io.crm.pipelines.transformation.impl.json.object.ConverterTransformation;
@@ -37,6 +31,7 @@ import io.crm.web.util.WebUtils;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -50,6 +45,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static com.imslbd.um.service.Services.AUTH_TOKEN;
 import static com.imslbd.um.service.Services.converters;
 
 /**
@@ -403,6 +399,9 @@ public class ProductService {
     }
 
     public void create(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         System.out.println();
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
@@ -455,24 +454,28 @@ public class ProductService {
 
                                 final long newId = id.getAndIncrement();
 
+                                final JsonObject prod = includeExcludeTransformation
+                                    .transform(product)
+                                    .put(Product.ID, newId);
+
+                                final List<JsonObject> newPriceList = priceList.stream()
+                                    .map(removeNullsTransformation::transform)
+                                    .map(unitConverterTransformation::transform)
+                                    .map(unitIncludeExcludeTransformation::transform)
+                                    .map(js ->
+                                        js
+                                            .put(ProductUnitPrice.PRODUCT_ID, newId)
+                                            .put(Unit.CREATED_BY, user.getLong(User.ID))
+                                            .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()))
+                                            .put(Unit.UPDATED_BY, 0))
+                                    .collect(Collectors.toList());
+
                                 Promises
                                     .when(
                                         WebUtils.create(TABLE_NAME,
-                                            includeExcludeTransformation
-                                                .transform(product)
-                                                .put(Product.ID, newId), con)
+                                            prod, con)
                                             .map(updateResult -> updateResult.getKeys().getLong(0)),
-                                        WebUtils.createMulti(PRODUCT_UNIT_PRICES_TABLE,
-                                            priceList.stream()
-                                                .map(removeNullsTransformation::transform)
-                                                .map(unitConverterTransformation::transform)
-                                                .map(unitIncludeExcludeTransformation::transform)
-                                                .map(js ->
-                                                    js
-                                                        .put(ProductUnitPrice.PRODUCT_ID, newId)
-                                                        .put(Unit.CREATED_BY, 0)
-                                                        .put(Unit.UPDATED_BY, 0))
-                                                .collect(Collectors.toList()), con)
+                                        WebUtils.createMulti(PRODUCT_UNIT_PRICES_TABLE, newPriceList, con)
                                     )
                                     .mapToPromise(t -> {
                                         Defer<Void> defer = Promises.defer();
@@ -483,6 +486,12 @@ public class ProductService {
                                     .then(tpl2 -> tpl2.accept((id, list) -> {
                                         message.reply(id);
                                     }))
+                                    .then(
+                                        v -> vertx.eventBus().publish(
+                                            UmEvents.PRODUCT_CREATED,
+                                            prod
+                                                .put(Product.PRICES, newPriceList)
+                                                .put(User.CREATED_BY, user)))
                                     .error(e -> ExceptionUtil.fail(message, e))
                                     .complete(p -> con.close())
                                 ;
@@ -500,6 +509,9 @@ public class ProductService {
     }
 
     public void update(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         System.out.println();
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
@@ -553,27 +565,35 @@ public class ProductService {
                         .then(con -> {
 
                             try {
+
                                 List<JsonObject> priceList = product.getJsonArray(Product.PRICES).getList();
                                 final Object productId = product.getValue(Product.ID);
+
+                                final JsonObject prod = includeExcludeTransformation
+                                    .transform(product)
+                                    .put(User.UPDATED_BY, user.getValue(User.ID))
+                                    .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()));
+
+                                final List<JsonObject> newProductPriceList = priceList.stream()
+                                    .map(removeNullsTransformation::transform)
+                                    .map(unitConverterTransformation::transform)
+                                    .map(unitIncludeExcludeTransformation::transform)
+                                    .map(js ->
+                                        js
+                                            .put(ProductUnitPrice.PRODUCT_ID, productId)
+                                            .put(Unit.CREATED_BY, 0)
+                                            .put(Unit.UPDATED_BY, 0))
+                                    .collect(Collectors.toList());
+
                                 Promises
                                     .when(
                                         WebUtils.update(TABLE_NAME,
-                                            includeExcludeTransformation
-                                                .transform(product),
+                                            prod,
                                             new JsonObject()
                                                 .put(Product.ID, productId), con)
                                             .map(updateResult -> productId),
                                         WebUtils.createMulti(PRODUCT_UNIT_PRICES_TABLE,
-                                            priceList.stream()
-                                                .map(removeNullsTransformation::transform)
-                                                .map(unitConverterTransformation::transform)
-                                                .map(unitIncludeExcludeTransformation::transform)
-                                                .map(js ->
-                                                    js
-                                                        .put(ProductUnitPrice.PRODUCT_ID, productId)
-                                                        .put(Unit.CREATED_BY, 0)
-                                                        .put(Unit.UPDATED_BY, 0))
-                                                .collect(Collectors.toList()), con)
+                                            newProductPriceList, con)
                                     )
                                     .mapToPromise(t -> {
                                         Defer<Void> defer = Promises.defer();
@@ -583,6 +603,10 @@ public class ProductService {
                                     })
                                     .then(tpl2 -> tpl2.accept(
                                         (id, list) -> message.reply(id)))
+                                    .then(e -> vertx.eventBus().publish(
+                                        UmEvents.PRODUCT_UPDATED,
+                                        prod.put(User.UPDATED_BY, user)
+                                            .put(Product.PRICES, newProductPriceList)))
                                     .error(e -> ExceptionUtil.fail(message, e))
                                     .complete(p -> con.close())
                                 ;
@@ -600,10 +624,17 @@ public class ProductService {
     }
 
     public void delete(Message<Object> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> Converters.toLong(message.body()))
             .mapToPromise(id -> WebUtils.delete(TABLE_NAME, id, jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                 .then(message::reply))
+            .then(v -> vertx.eventBus().publish(UmEvents.PRODUCT_DELETED,
+                new JsonObject()
+                    .put(Inventory.DELETED_BY, user)
+                    .put(Inventory.DELETE_DATE, Converters.toMySqlDateString(new Date()))))
             .error(e ->
                 ExceptionUtil.fail(message, e))
         ;

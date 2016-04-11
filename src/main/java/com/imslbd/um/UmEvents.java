@@ -43,8 +43,6 @@ public class UmEvents {
     public static final String INSERT_INVENTORY_PRODUCT = "INSERT_INVENTORY_PRODUCT";
     public static final String DELETE_INVENTORY_PRODUCT = "DELETE_INVENTORY_PRODUCT";
 
-    public static final String PRODUCT_ADDED_TO_INVENTORY = "PRODUCT_ADDED_TO_INVENTORY";
-
     public static final String ADD_PRODUCT_TO_INVENTORY = "ADD_PRODUCT_TO_INVENTORY";
     public static final String REMOVE_PRODUCT_FROM_INVENTORY = "REMOVE_PRODUCT_FROM_INVENTORY";
     public static final String EDIT_INVENTORY_PRODUCT_QUANTITY = "EDIT_INVENTORY_PRODUCT_QUANTITY";
@@ -57,6 +55,24 @@ public class UmEvents {
     public static final java.lang.String FIND_SELL_DECOMPOSED = "FIND_SELL_DECOMPOSED";
     public static final java.lang.String CHANGE_PASSWORD = "CHANGE_PASSWORD";
     public static final java.lang.String TRANSFER_PRODUCT_TO_INVENTORY = "TRANSFER_PRODUCT_TO_INVENTORY";
+
+    //UmEvents
+    public static final String INVENTORY_CREATED = "INVENTORY_CREATED";
+    public static final String INVENTORY_UPDATED = "INVENTORY_UPDATED";
+    public static final String INVENTORY_DELETED = "INVENTORY_DELETED";
+    public static final String NEW_PRODUCT_INSERTED_TO_INVENTORY = "NEW_PRODUCT_INSERTED_TO_INVENTORY";
+    public static final String PRODUCT_DELETED_FROM_INVENTORY = "PRODUCT_DELETED_FROM_INVENTORY";
+    public static final String PRODUCT_ADDED_TO_INVENTORY = "PRODUCT_ADDED_TO_INVENTORY";
+    public static final String PRODUCT_REMOVED_FROM_INVENTORY = "PRODUCT_REMOVED_FROM_INVENTORY";
+    public static final String INVENTORY_PRODUCT_EDITED = "INVENTORY_PRODUCT_EDITED";
+    public static final String INVENTORY_PRODUCT_TRANSFERRED = "INVENTORY_PRODUCT_TRANSFERRED";
+
+    public static final String PRODUCT_CREATED = "PRODUCT_CREATED";
+    public static final String PRODUCT_DELETED = "PRODUCT_DELETED";
+    public static final String PRODUCT_UPDATED = "PRODUCT_UPDATED";
+    public static final String SELL_CREATED = "SELL_CREATED";
+    public static final String SELL_UPDATED = "SELL_UPDATED";
+    public static final String SELL_DELETED = "SELL_DELETED";
 
     public static final String um(String des) {
         return "UM." + des;

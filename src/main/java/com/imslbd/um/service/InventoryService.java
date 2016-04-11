@@ -39,6 +39,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.imslbd.um.service.Services.AUTH_TOKEN;
 import static com.imslbd.um.service.Services.converters;
 import static io.crm.web.util.WebUtils.multiUpdate;
 import static io.crm.web.util.WebUtils.query;
@@ -204,6 +205,9 @@ public class InventoryService {
     }
 
     public void create(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         System.out.println();
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
@@ -239,13 +243,19 @@ public class InventoryService {
             .contnue(
                 rsp -> {
                     JsonObject inventory = (JsonObject) rsp;
+
+                    inventory
+                        .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()))
+                        .put(User.CREATED_BY, user.getValue(User.ID));
+
                     WebUtils
-                        .create(TABLE_NAME,
-                            inventory
-                                .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()))
-                                .put(User.CREATED_BY, new JsonObject(message.headers().get(""))), jdbcClient)
+                        .create(TABLE_NAME, inventory, jdbcClient)
                         .map(updateResult -> updateResult.getKeys().getLong(0))
                         .then(message::reply)
+                        .then(id -> inventory.put(Inventory.ID, id))
+                        .then(
+                            js -> vertx.eventBus().publish(UmEvents.INVENTORY_CREATED,
+                                inventory.put(User.CREATED_BY, user)))
                         .error(e -> ExceptionUtil.fail(message, e));
                 })
             .error(e ->
@@ -253,6 +263,9 @@ public class InventoryService {
     }
 
     public void update(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
                 inventory -> {
@@ -284,21 +297,38 @@ public class InventoryService {
             .contnue(
                 rsp -> {
                     JsonObject inventory = (JsonObject) rsp;
+
+                    inventory.put(User.UPDATED_BY, user.getValue(User.ID))
+                        .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()))
+                    ;
+
                     WebUtils.update(
                         TABLE_NAME, inventory,
                         inventory.getLong(Inventory.ID, 0L), jdbcClient)
                         .map(updateResult -> inventory.getValue(Inventory.ID))
                         .then(message::reply)
+                        .then(id -> inventory.put(Inventory.ID, id))
+                        .then(
+                            js -> vertx.eventBus().publish(UmEvents.INVENTORY_UPDATED,
+                                inventory.put(User.UPDATED_BY, user)))
                         .error(e -> ExceptionUtil.fail(message, e));
                 })
             .error(e -> ExceptionUtil.fail(message, e));
     }
 
     public void delete(Message<Object> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> Converters.toLong(message.body()))
             .mapToPromise(id -> WebUtils.delete(TABLE_NAME, id, jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                 .then(message::reply))
+            .then(id -> vertx.eventBus().publish(UmEvents.INVENTORY_DELETED,
+                new JsonObject()
+                    .put(Inventory.ID, id)
+                    .put(Inventory.DELETED_BY, user)
+                    .put(Inventory.DELETE_DATE, Converters.toMySqlDateString(new Date()))))
             .error(e ->
                 ExceptionUtil.fail(message, e))
         ;
@@ -325,24 +355,43 @@ public class InventoryService {
 
         final JsonObject inventoryProduct = productTransformationPipeline.transform(message.body());
 
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
+        inventoryProduct.put(User.CREATED_BY, user.getValue(User.ID));
+        inventoryProduct.put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()));
+
         WebUtils
             .create(Tables.inventoryProducts.name(), inventoryProduct, jdbcClient)
             .map(updateResult -> updateResult.getKeys().getValue(0))
             .then(message::reply)
+            .then(v -> vertx.eventBus().publish(UmEvents.NEW_PRODUCT_INSERTED_TO_INVENTORY,
+                inventoryProduct
+                    .put(User.CREATED_BY, user)))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
 
     public void deleteProduct(Message<Object> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.from(message.body())
             .mapToPromise(id -> WebUtils.delete(Tables.inventoryProducts.name(), id, jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0))
             .then(message::reply)
+            .then(
+                v -> vertx.eventBus().publish(UmEvents.PRODUCT_DELETED_FROM_INVENTORY,
+                    new JsonObject()
+                        .put(Inventory.DELETED_BY, user)
+                        .put(Inventory.DELETE_DATE, Converters.toMySqlDateString(new Date()))))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
 
     public void addProduct(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises
             .callable(() -> {
                 final JsonObject body = message.body();
@@ -350,6 +399,8 @@ public class InventoryService {
                     new JsonObject()
                         .put(InventoryProduct.ID, Converters.toLong(body.getValue(InventoryProduct.ID)))
                         .put(QUANTITY, Converters.toDouble(body.getValue(QUANTITY)))
+                        .put(User.UPDATED_BY, user.getValue(User.ID))
+                        .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()))
                     ;
             })
             .mapToPromise(req -> WebUtils.update(
@@ -358,11 +409,17 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
+            .then(jsonObject -> vertx.eventBus().publish(UmEvents.PRODUCT_ADDED_TO_INVENTORY,
+                jsonObject
+                    .put(User.UPDATED_BY, user)))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
 
     public void removeProduct(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises
             .callable(() -> {
                 final JsonObject body = message.body();
@@ -370,6 +427,8 @@ public class InventoryService {
                     new JsonObject()
                         .put(InventoryProduct.ID, Converters.toLong(body.getValue(InventoryProduct.ID)))
                         .put(QUANTITY, Converters.toDouble(body.getValue(QUANTITY)))
+                        .put(User.UPDATED_BY, user.getValue(User.ID))
+                        .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()))
                     ;
             })
             .mapToPromise(req -> WebUtils.update(
@@ -378,11 +437,17 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
+            .then(jsonObject -> vertx.eventBus().publish(UmEvents.PRODUCT_REMOVED_FROM_INVENTORY,
+                jsonObject
+                    .put(User.UPDATED_BY, user)))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
 
     public void editProductQuantity(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises
             .callable(() -> {
                 final JsonObject body = message.body();
@@ -391,6 +456,8 @@ public class InventoryService {
                         .put(InventoryProduct.ID, Converters.toLong(body.getValue(InventoryProduct.ID)))
                         .put(QUANTITY, Converters.toDouble(body.getValue(QUANTITY)))
                         .put(InventoryProduct.UNIT_ID, Converters.toLong(body.getValue(InventoryProduct.UNIT_ID)))
+                        .put(User.UPDATED_BY, user.getValue(User.ID))
+                        .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()))
                     ;
             })
             .mapToPromise(req -> WebUtils.update(
@@ -400,11 +467,17 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
+            .then(jsonObject -> vertx.eventBus().publish(UmEvents.INVENTORY_PRODUCT_EDITED,
+                jsonObject
+                    .put(User.UPDATED_BY, user)))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
 
     public void transferTo(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises
             .callable(() -> {
                 JsonObject body = message.body();
@@ -484,6 +557,10 @@ public class InventoryService {
                                         "," + req.getLong(InventoryProduct.UNIT_ID) + ")"
                                 ), jdbcClient).map(vk -> val3))
                             .then(message::reply)
+                            .then(req -> vertx.eventBus().publish(UmEvents.INVENTORY_PRODUCT_TRANSFERRED,
+                                req
+                                    .put(User.UPDATED_BY, user)
+                                    .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()))))
                             .error(e -> ExceptionUtil.fail(message, e)))
                     .error(e -> ExceptionUtil.fail(message, e))
             )

@@ -2,10 +2,8 @@ package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.imslbd.um.Tables;
-import com.imslbd.um.Um;
-import com.imslbd.um.UmErrorCodes;
-import com.imslbd.um.UmUtils;
+import com.imslbd.um.*;
+import com.imslbd.um.model.Inventory;
 import com.imslbd.um.model.Unit;
 import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
@@ -25,12 +23,14 @@ import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
 import io.crm.util.touple.immutable.Tpl2;
 import io.crm.util.touple.immutable.Tpls;
+import io.crm.web.util.Convert;
 import io.crm.web.util.Converters;
 import io.crm.web.util.Pagination;
 import io.crm.web.util.WebUtils;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -41,6 +41,7 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.imslbd.um.service.Services.AUTH_TOKEN;
 import static com.imslbd.um.service.Services.converters;
 
 /**
@@ -245,6 +246,9 @@ public class UserService {
     }
 
     public void create(Message<JsonObject> message) {
+
+        final JsonObject currentUser = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         System.out.println();
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
@@ -278,10 +282,16 @@ public class UserService {
             .contnue(
                 rsp -> {
                     JsonObject user = (JsonObject) rsp;
+
+                    user.put(User.CREATED_BY, currentUser.getValue(User.ID))
+                        .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()));
+
                     WebUtils
                         .create(Tables.users.name(), user, jdbcClient)
                         .map(updateResult -> updateResult.getKeys().getLong(0))
                         .then(message::reply)
+                        .then(v -> vertx.eventBus().publish(UmEvents.USER_CREATED,
+                            user.put(User.CREATED_BY, currentUser)))
                         .error(e -> ExceptionUtil.fail(message, e));
                 })
             .error(e ->
@@ -289,6 +299,9 @@ public class UserService {
     }
 
     public void update(Message<JsonObject> message) {
+
+        final JsonObject currentUser = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> createTransformationPipeline.transform(message.body()))
             .decideAndMap(
                 user -> {
@@ -321,19 +334,30 @@ public class UserService {
                 rsp -> {
                     JsonObject user = (JsonObject) rsp;
                     final Long id = user.getLong(User.ID, 0L);
+
+                    user.put(User.UPDATED_BY, currentUser.getValue(User.ID))
+                        .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()));
+
                     WebUtils.update(Tables.users.name(), user, id, jdbcClient)
                         .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                         .then(message::reply)
+                        .then(eee -> vertx.eventBus().publish(UmEvents.USER_UPDATED, user.put(User.UPDATED_BY, currentUser)))
                         .error(e -> ExceptionUtil.fail(message, e));
                 })
             .error(e -> ExceptionUtil.fail(message, e));
     }
 
     public void delete(Message<Object> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> Converters.toLong(message.body()))
             .mapToPromise(id -> WebUtils.delete(Tables.users.name(), id, jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                 .then(message::reply))
+            .then(vv -> vertx.eventBus().publish(UmEvents.USER_DELETED,
+                new JsonObject().put(Inventory.DELETED_BY, user)
+                    .put(Inventory.DELETE_DATE, Converters.toMySqlDateString(new Date()))))
             .error(e ->
                 ExceptionUtil.fail(message, e))
         ;

@@ -101140,7 +101140,7 @@ module.exports = ListSells = _react2.default.createClass({
         var ps = parseInt(form['s.status']);
 
         form = lib.merge2(form, {
-            's.status': ps == 0 ? null : ps == 1 ? false : true
+            's.status': ps == 0 ? null : ps == 1 ? false : ps == 2 ? true : null
         });
 
         sellService.findAll(form).then(function (rsp) {

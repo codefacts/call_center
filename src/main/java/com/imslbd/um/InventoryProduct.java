@@ -14,4 +14,6 @@ public class InventoryProduct {
     public static final String DEST_INVENTORY_ID = "destInventoryId";
     public static final String UNIT_ID_2 = "unit_id_2";
     public static final String NEQ_QUANTITY = "new_quantity";
+    public static final String CREATE_DATE = "CREATE_DATE";
+    public static final String CREATED_BY = "CREATED_BY";
 }

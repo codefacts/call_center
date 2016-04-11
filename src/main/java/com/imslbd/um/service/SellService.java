@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.imslbd.um.UmUtils.limitOffset;
+import static com.imslbd.um.service.Services.AUTH_TOKEN;
 import static com.imslbd.um.service.Services.converters;
 import static io.crm.util.Util.apply;
 
@@ -381,6 +382,9 @@ public class SellService {
     }
 
     public void create(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         System.out.println();
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
@@ -431,20 +435,25 @@ public class SellService {
 
                                 final long newId = id.getAndIncrement();
 
+                                final JsonObject sll = includeExcludeTransformation
+                                    .transform(sell)
+                                    .put(Sell.ID, newId)
+                                    .put(Sell.TRANSACTION_ID, transactionId.getAndIncrement())
+                                    .put(Sell.ORDER_ID, orderId.getAndIncrement())
+                                    .put(Sell.SELL_DATE, Converters.toMySqlDateString(new Date()))
+                                    .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()))
+                                    .put(User.CREATED_BY, user.getValue(User.ID));
+
+                                final List<JsonObject> sellItems = priceList.stream()
+                                    .peek(js -> js.put(SellUnit.SELL_ID, newId))
+                                    .collect(Collectors.toList());
+
                                 Promises
                                     .when(
                                         WebUtils.create(TABLE_NAME,
-                                            includeExcludeTransformation
-                                                .transform(sell)
-                                                .put(Sell.ID, newId)
-                                                .put(Sell.TRANSACTION_ID, transactionId.getAndIncrement())
-                                                .put(Sell.ORDER_ID, orderId.getAndIncrement())
-                                                .put(Sell.SELL_DATE, Converters.toMySqlDateString(new Date())), con)
+                                            sll, con)
                                             .map(updateResult -> updateResult.getKeys().getLong(0)),
-                                        WebUtils.createMulti(Tables.sellUnits.name(),
-                                            priceList.stream()
-                                                .peek(js -> js.put(SellUnit.SELL_ID, newId))
-                                                .collect(Collectors.toList()), con)
+                                        WebUtils.createMulti(Tables.sellUnits.name(), sellItems, con)
                                     )
                                     .mapToPromise(t -> {
                                         Defer<Void> defer = Promises.defer();
@@ -455,6 +464,8 @@ public class SellService {
                                     .then(tpl2 -> tpl2.accept((id, list) -> {
                                         message.reply(id);
                                     }))
+                                    .then(v -> vertx.eventBus().publish(UmEvents.SELL_CREATED,
+                                        sll.put(Sell.SELL_UNITS, sellItems).put(User.CREATED_BY, user)))
                                     .error(e -> ExceptionUtil.fail(message, e))
                                     .complete(p -> con.close())
                                 ;
@@ -472,6 +483,9 @@ public class SellService {
     }
 
     public void update(Message<JsonObject> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
                 inventory -> {
@@ -520,18 +534,24 @@ public class SellService {
                             try {
                                 List<JsonObject> priceList = sell.getJsonArray(Sell.SELL_UNITS).getList();
 
+                                final JsonObject sll = updateIncludeExcludeTransformation
+                                    .transform(sell)
+                                    .put(User.UPDATED_BY, user.getValue(User.ID))
+                                    .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()));
+
+                                final List<JsonObject> items = priceList.stream()
+                                    .peek(js -> js.put(SellUnit.SELL_ID, id))
+                                    .collect(Collectors.toList());
+
                                 Promises
                                     .when(
                                         WebUtils.update(TABLE_NAME,
-                                            updateIncludeExcludeTransformation
-                                                .transform(sell),
+                                            sll,
                                             new JsonObject()
                                                 .put(Sell.ID, id), con)
                                             .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0),
                                         WebUtils.createMulti(Tables.sellUnits.name(),
-                                            priceList.stream()
-                                                .peek(js -> js.put(SellUnit.SELL_ID, id))
-                                                .collect(Collectors.toList()), con)
+                                            items, con)
                                     )
                                     .mapToPromise(t -> {
                                         Defer<Void> defer = Promises.defer();
@@ -542,6 +562,9 @@ public class SellService {
                                     .then(tpl2 -> tpl2.accept((sellId, list) -> {
                                         message.reply(sellId);
                                     }))
+                                    .then(k -> vertx.eventBus().publish(
+                                        UmEvents.SELL_UPDATED,
+                                        sll.put(Sell.SELL_UNITS, items).put(User.UPDATED_BY, user)))
                                     .error(e -> ExceptionUtil.fail(message, e))
                                     .complete(p -> con.close())
                                 ;
@@ -558,10 +581,16 @@ public class SellService {
     }
 
     public void delete(Message<String> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         Promises.callable(() -> Converters.toLong(message.body()))
             .mapToPromise(id -> WebUtils.delete(TABLE_NAME, id, jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
                 .then(message::reply))
+            .then(
+                v -> vertx.eventBus().publish(UmEvents.SELL_DELETED,
+                    new JsonObject().put(Inventory.DELETED_BY, user).put(Inventory.DELETE_DATE, Converters.toMySqlDateString(new Date()))))
             .error(e ->
                 ExceptionUtil.fail(message, e))
         ;

@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.imslbd.call_center.MainVerticle;
 import com.imslbd.um.*;
+import com.imslbd.um.model.Inventory;
 import com.imslbd.um.model.Unit;
 import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
@@ -19,9 +20,11 @@ import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
 import io.crm.promise.Decision;
 import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
+import io.crm.web.util.Converters;
 import io.crm.web.util.WebUtils;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import org.slf4j.Logger;
@@ -29,7 +32,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+
+import static com.imslbd.um.service.Services.AUTH_TOKEN;
 
 /**
  * Created by shahadat on 3/27/16.
@@ -119,6 +125,9 @@ public class UnitService {
 
     public void createUnit(Message<JsonObject> message) {
         try {
+
+            final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
             JsonObject js = transformationPipeline.transform(Util.or(message.body(), new JsonObject()));
 
             final JsonObject unitJson = js;
@@ -133,11 +142,14 @@ public class UnitService {
                 return;
             }
 
+            unitJson.put(User.CREATED_BY, user.getValue(User.ID))
+                .put(User.CREATE_DATE, Converters.toMySqlDateString(new Date()));
+
             WebUtils.create(Tables.units.name(), unitJson, jdbcClient)
                 .map(updateResult -> updateResult.getKeys().getLong(0))
                 .then(id -> message.reply(id))
                 .error(e -> ExceptionUtil.fail(message, e))
-                .then(id -> vertx.eventBus().publish(UmEvents.UNIT_CREATED, unitJson))
+                .then(id -> vertx.eventBus().publish(UmEvents.UNIT_CREATED, unitJson.put(User.CREATED_BY, user)))
             ;
 
         } catch (Exception ex) {
@@ -149,6 +161,9 @@ public class UnitService {
 
     public void updateUnit(Message<JsonObject> message) {
         try {
+
+            final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
             JsonObject js = transformationPipeline.transform(Util.or(message.body(), new JsonObject()));
 
             final JsonObject unitJson = js;
@@ -163,9 +178,13 @@ public class UnitService {
                 return;
             }
 
+            unitJson.put(User.UPDATED_BY, user.getValue(User.ID))
+                .put(User.UPDATE_DATE, Converters.toMySqlDateString(new Date()));
+
             WebUtils.update(Tables.units.name(), unitJson, unitJson.getLong("id"), jdbcClient)
                 .map(updateResult -> updateResult.getUpdated() > 0 ? unitJson.getLong("id") : 0)
                 .then(message::reply)
+                .then(v -> vertx.eventBus().publish(UmEvents.UNIT_UPDATED, unitJson.put(User.UPDATED_BY, user)))
                 .error(e -> ExceptionUtil.fail(message, e))
                 .then(v -> vertx.eventBus().publish(UmEvents.UNIT_UPDATED, unitJson))
             ;
@@ -177,10 +196,18 @@ public class UnitService {
     }
 
     public void deleteUnit(Message<Number> message) {
+
+        final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
+
         final long id = message.body().longValue();
         WebUtils.delete(Tables.units.name(), id, jdbcClient)
             .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0)
             .then(message::reply)
+            .then(v -> vertx.eventBus().publish(UmEvents.UNIT_DELETED,
+                new JsonObject()
+                    .put(Unit.ID, id)
+                    .put(Inventory.DELETED_BY, user)
+                    .put(Inventory.DELETE_DATE, Converters.toMySqlDateString(new Date()))))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }

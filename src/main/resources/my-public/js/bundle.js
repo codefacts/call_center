@@ -29232,7 +29232,7 @@ var AuthService = function () {
     }, {
         key: 'currentUser',
         value: function currentUser() {
-            return user;
+            return user || {};
         }
     }, {
         key: 'authToken',
