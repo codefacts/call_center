@@ -72,8 +72,6 @@ public class ProductService {
     private final Vertx vertx;
     private final JDBCClient jdbcClient;
     private final RemoveNullsTransformation removeNullsTransformation;
-    private final DefaultValueTransformation defaultValueTransformationParams =
-        new DefaultValueTransformation(Util.EMPTY_JSON_OBJECT);
 
     private static final String PRODUCT_NOT_FOUND = "PRODUCT_NOT_FOUND";
 
@@ -187,24 +185,40 @@ public class ProductService {
         final String uSel2 = unitFields.stream().map(field -> "u2." + field).collect(Collectors.joining(", "));
 
         Promises.from(message.body())
-            .map(defaultValueTransformationParams::transform)
+            .map(jaa -> jaa == null ? new JsonObject() : jaa)
             .map(removeNullsTransformation::transform)
-            .then(json -> {
-                int page = json.getInteger(PAGE, 1);
-                int size = json.getInteger(SIZE, DEFAULT_PAGE_SIZE);
+            .then(params -> {
+                int page = params.getInteger(PAGE, 1);
+                int size = params.getInteger(SIZE, DEFAULT_PAGE_SIZE);
 
-                String from = "from " + TABLE_NAME + " p " +
+                final String from = "from " + TABLE_NAME + " p " +
                     "join " + Tables.productUnitPrices + " up on up.productId = p.id " +
                     "join " + Tables.units + " u on u.id = up.unitId " +
-                    "join " + Tables.units + " u2 on u2.id = p.manufacturerPriceUnitId ";
+                    "join " + Tables.units + " u2 on u2.id = p.manufacturerPriceUnitId";
+
+                final JsonArray prmsArray = new JsonArray();
+
+                String where;
+
+                {
+                    String whr = params.fieldNames()
+                        .stream()
+                        .peek(nm -> prmsArray.add(params.getValue(nm)))
+                        .map(nm -> nm + " = ?")
+                        .collect(Collectors.joining(" and "));
+                    where = whr.isEmpty() ? "" : "where " + whr;
+                }
+
+                String fromWhere = from + " " + where;
+
                 String groupBy = "group by p.id, up.productId, up.unitId";
 
                 Promises.when(
-                    WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
+                    WebUtils.query("select count(*) as totalCount " + fromWhere, prmsArray, jdbcClient)
                         .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
                     WebUtils.query(
-                        "select " + pSel + ", " + prSel + ", " + uSel + ", " + uSel2 + " " + from + " " + groupBy + " " +
-                            UmUtils.limitOffset(page, size), jdbcClient)
+                        "select " + pSel + ", " + prSel + ", " + uSel + ", " + uSel2 + " " + fromWhere + " " + groupBy + " " +
+                            UmUtils.limitOffset(page, size), prmsArray, jdbcClient)
                         .map(resultSet3 ->
                             Tpls.of(new JsonObject()
                                 .put(HEADERS, resultSet3.getColumnNames()
@@ -664,7 +678,25 @@ public class ProductService {
     }
 
     public void findAllDecomposed(Message<JsonObject> message) {
-        WebUtils.query("select * from " + TABLE_NAME, jdbcClient)
+        Promises.from(message.body())
+            .map(removeNullsTransformation::transform)
+            .mapToPromise(params -> {
+
+                final JsonArray prmsArray = new JsonArray();
+
+                String where;
+
+                {
+                    String whr = params.fieldNames()
+                        .stream()
+                        .peek(nm -> prmsArray.add(params.getValue(nm)))
+                        .map(nm -> nm + " = ?")
+                        .collect(Collectors.joining(" and "));
+                    where = whr.isEmpty() ? "" : "where " + whr;
+                }
+
+                return WebUtils.query("select * from products " + where, prmsArray, jdbcClient);
+            })
             .map(ResultSet::getRows)
             .then(
                 list ->

@@ -1,9 +1,12 @@
 package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.imslbd.call_center.MyApp;
 import com.imslbd.um.UmErrorCodes;
+import com.imslbd.um.model.User;
 import io.crm.ErrorCodes;
+import io.crm.pipelines.transformation.impl.json.object.IncludeExcludeTransformation;
 import io.crm.util.DataTypes;
 import io.crm.util.ExceptionUtil;
 import io.crm.web.util.Converters;
@@ -41,6 +44,9 @@ public class Services {
     public static final String MESSAGE = "message";
     public static final String RESPONSE_CODE = "responseCode";
     public static final Map<Integer, JsonObject> ERROR_CODES_MAP;
+    public static final IncludeExcludeTransformation USER_TRACKING_EXCLUDE_TRANSFORMATION = new IncludeExcludeTransformation(null, ImmutableSet.of(
+        User.CREATE_DATE, User.CREATED_BY, User.UPDATE_DATE, User.UPDATED_BY
+    ));
 
     static {
         JDBC_TYPES = ImmutableMap.copyOf(Arrays.asList(Types.class.getDeclaredFields())
@@ -59,6 +65,7 @@ public class Services {
             .put(4, DataTypes.LONG)
             .put(12, DataTypes.STRING)
             .put(-1, DataTypes.STRING)
+            .put(-7, DataTypes.BOOLEAN)
             .put(91, DataTypes.DATE)
             .put(93, DataTypes.DATE)
             .put(8, DataTypes.DATE.DOUBLE)
@@ -72,6 +79,7 @@ public class Services {
             .put(4, Converters::toLong)
             .put(12, s -> s)
             .put(-1, s -> s)
+            .put(-7, Converters::toBoolean)
             .put(91, Converters::toMySqlDateString)
             .put(93, Converters::toMySqlDateString)
             .put(8, Converters::toDouble)

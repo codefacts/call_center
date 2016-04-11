@@ -1,6 +1,7 @@
 package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.imslbd.um.*;
 import com.imslbd.um.model.*;
@@ -41,11 +42,14 @@ import org.slf4j.LoggerFactory;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.imslbd.um.UmUtils.limitOffset;
 import static com.imslbd.um.service.Services.converters;
+import static io.crm.util.Util.apply;
 
 /**
  * Created by shahadat on 4/7/16.
@@ -86,6 +90,9 @@ public class SellService {
 
     private final JsonTransformationPipeline sellUnitTransformationPipeline;
 
+    private final IncludeExcludeTransformation findAllFiltersExclude;
+    private final ConverterTransformation findAllConverterTransformation;
+
     private final AtomicLong id;
     private final AtomicLong transactionId;
     private final AtomicLong orderId;
@@ -108,32 +115,17 @@ public class SellService {
         {
             removeNullsTransformation = new RemoveNullsTransformation();
 
-            includeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields),
-                ImmutableSet.of(Sell.SELL_DATE));
-
-            updateIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields), null);
-
-            converterTransformation = new ConverterTransformation(converters(fields, TABLE_NAME));
+            ImmutableMap<String, Function<Object, Object>> converters = converters(fields, TABLE_NAME);
+            converterTransformation = new ConverterTransformation(converters);
+            findAllConverterTransformation = new ConverterTransformation(
+                converters.entrySet().stream().collect(Collectors.toMap(e -> "s." + e.getKey(), e -> e.getValue())));
 
             defaultValueTransformation = new DefaultValueTransformation(
                 new JsonObject()
                     .put(Unit.UPDATED_BY, 0)
                     .put(Unit.CREATED_BY, 0)
             );
-
-            transformationPipeline = new JsonTransformationPipeline(
-                ImmutableList.of(
-                    new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
-                    converterTransformation,
-                    defaultValueTransformation,
-                    removeNullsTransformation
-                )
-            );
-
-
-            validationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(validators()));
         }
-
 
         {
             sellUnitIncludeExcludeTransformation = new IncludeExcludeTransformation(
@@ -147,10 +139,44 @@ public class SellService {
                     new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
                     removeNullsTransformation,
                     defaultValueTransformation,
-                    converterTransformation,
+                    sellUnitConverterTransformation,
                     sellUnitIncludeExcludeTransformation
                 )
             );
+        }
+
+        {
+
+            includeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields),
+                ImmutableSet.of(Sell.SELL_DATE));
+
+            updateIncludeExcludeTransformation = new IncludeExcludeTransformation(ImmutableSet.copyOf(fields), null);
+
+            transformationPipeline = new JsonTransformationPipeline(
+                ImmutableList.of(
+                    new IncludeExcludeTransformation(null, ImmutableSet.of(User.CREATED_BY, User.CREATE_DATE, User.UPDATED_BY, User.UPDATE_DATE)),
+                    converterTransformation,
+                    defaultValueTransformation,
+                    removeNullsTransformation,
+                    js -> {
+
+                        final List<JsonObject> priceList = js.getJsonArray(Sell.SELL_UNITS, Util.EMPTY_JSON_ARRAY).getList();
+
+                        return
+                            js.put(Sell.SELL_UNITS, priceList.stream()
+                                .map(sellUnitTransformationPipeline::transform)
+                                .filter(jss -> jss.getDouble(SellUnit.QUANTITY, 0.0) > 0)
+                                .collect(Collectors.toList()));
+                    }
+                )
+            );
+
+
+            validationPipeline = new ValidationPipeline<>(ImmutableList.copyOf(validators()));
+        }
+
+        {
+            findAllFiltersExclude = new IncludeExcludeTransformation(Arrays.asList(fields).stream().map(n -> "s." + n).collect(Collectors.toSet()), null);
         }
 
         id = new AtomicLong(maxId + 1);
@@ -184,7 +210,7 @@ public class SellService {
         validators.add(
             js -> js.getJsonArray(Sell.SELL_UNITS, Util.EMPTY_JSON_ARRAY).size() > 0 ? null :
                 new ValidationResultBuilder()
-                    .setErrorCode(UmErrorCodes.SELL_ITEMS_MISSING_VALIDATON_ERROR.code())
+                    .setErrorCode(UmErrorCodes.SALE_ITEM_MISSING_VALIDATON_ERROR.code())
                     .setField(Sell.SELL_UNITS)
                     .setValue(js.getValue(Sell.SELL_UNITS))
                     .createValidationResult());
@@ -197,23 +223,39 @@ public class SellService {
         try {
 
 
-            final JsonObject params = message.body() == null
+            final JsonObject pms = message.body() == null
                 ? new JsonObject() : removeNullsTransformation.transform(message.body());
-            final int page = Converters.toInt(params.getValue(Pagination.PAGE, 1));
-            final int size = Converters.toInt(params.getValue(Pagination.SIZE, DEFAULT_PAGE_SIZE));
+            final int page = Converters.toInt(pms.getValue(Pagination.PAGE, 1));
+            final int size = Converters.toInt(pms.getValue(Pagination.SIZE, DEFAULT_PAGE_SIZE));
 
-            final String from = "from " + TABLE_NAME + " s " +
+            final JsonObject params = Stream.of(pms)
+                .map(findAllConverterTransformation::transform)
+                .map(findAllFiltersExclude::transform)
+                .map(Services.USER_TRACKING_EXCLUDE_TRANSFORMATION::transform).findAny().get();
+
+            final String from = "from sells s " +
                 "join sellUnits su on su.sellId = s.id " +
                 "join products p on su.productId = p.id " +
                 "join units u on su.unitId = u.id";
 
+            final JsonArray paramsArray = new JsonArray();
+
+            final String where = apply(params.stream()
+                    .peek(e -> paramsArray.add(e.getValue()))
+                    .map(e -> e.getKey() + " = ?")
+                    .collect(Collectors.joining(" and ")),
+                whr -> whr.isEmpty() ? "" : "where " + whr);
+
+            final String orderBy = "order by s.id desc";
+
             Promises
                 .when(
                     WebUtils.query(
-                        "select " + sellSelect() + " " + from + " " +
-                            "group by s.id, su.id " + limitOffset(page, size), jdbcClient).map(ResultSet::getResults),
+                        "select " + sellSelect() + " " + from + " " + where + " " +
+                            "group by s.id, su.id " +
+                            orderBy + " " + limitOffset(page, size), paramsArray, jdbcClient).map(ResultSet::getResults),
                     WebUtils.query(
-                        "select count(*) " + from, jdbcClient).map(resultSet1 -> resultSet1.getResults().get(0).getLong(0)))
+                        "select count(*) " + from + " " + where, paramsArray, jdbcClient).map(resultSet1 -> resultSet1.getResults().get(0).getLong(0)))
                 .map(val -> val.apply(
                     (jsonArrayList, total) -> {
 
@@ -229,7 +271,10 @@ public class SellService {
 
                         return
                             new JsonObject()
-                                .put(DATA, objectBuilder.build())
+                                .put(DATA, objectBuilder.build()
+                                    .stream()
+                                    .sorted((s1, s2) -> s2.getInteger(Sell.ID) - s1.getInteger(Sell.ID))
+                                    .collect(Collectors.toList()))
                                 .put(PAGINATION, new Pagination(page, size, total).toJson());
                     }))
                 .then(message::reply)
@@ -382,7 +427,7 @@ public class SellService {
                         .then(con -> {
 
                             try {
-                                List<JsonObject> priceList = sell.getJsonArray(Sell.SELL_UNITS).getList();
+                                final List<JsonObject> priceList = sell.getJsonArray(Sell.SELL_UNITS).getList();
 
                                 final long newId = id.getAndIncrement();
 
@@ -398,15 +443,7 @@ public class SellService {
                                             .map(updateResult -> updateResult.getKeys().getLong(0)),
                                         WebUtils.createMulti(Tables.sellUnits.name(),
                                             priceList.stream()
-                                                .map(removeNullsTransformation::transform)
-                                                .map(sellUnitConverterTransformation::transform)
-                                                .map(sellUnitIncludeExcludeTransformation::transform)
-                                                .filter(js -> js.getDouble(SellUnit.QUANTITY, 0.0) > 0)
-                                                .map(js ->
-                                                    js
-                                                        .put(SellUnit.SELL_ID, newId)
-                                                        .put(Unit.CREATED_BY, 0)
-                                                        .put(Unit.UPDATED_BY, 0))
+                                                .peek(js -> js.put(SellUnit.SELL_ID, newId))
                                                 .collect(Collectors.toList()), con)
                                     )
                                     .mapToPromise(t -> {
@@ -493,18 +530,7 @@ public class SellService {
                                             .map(updateResult -> updateResult.getUpdated() > 0 ? id : 0),
                                         WebUtils.createMulti(Tables.sellUnits.name(),
                                             priceList.stream()
-                                                .map(removeNullsTransformation::transform)
-                                                .map(sellUnitConverterTransformation::transform)
-                                                .map(sellUnitIncludeExcludeTransformation::transform)
-                                                .filter(js -> js.getDouble(SellUnit.QUANTITY, 0.0) > 0)
-                                                .map(js -> {
-                                                    js
-                                                        .put(SellUnit.SELL_ID, id)
-                                                        .put(Unit.CREATED_BY, 0)
-                                                        .put(Unit.UPDATED_BY, 0)
-                                                        .remove(SellUnit.ID);
-                                                    return js;
-                                                })
+                                                .peek(js -> js.put(SellUnit.SELL_ID, id))
                                                 .collect(Collectors.toList()), con)
                                     )
                                     .mapToPromise(t -> {

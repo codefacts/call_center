@@ -29156,6 +29156,12 @@ if (!!localStorage) {
     if (!!date && date.getDate() == new Date().getDate()) {
         token = localStorage.getItem("token");
         user = localStorage.getItem("user");
+        try {
+            user = JSON.parse(user);
+        } catch (e) {
+            token = null;
+            user = null;
+        }
     }
 }
 
@@ -29186,7 +29192,7 @@ var AuthService = function () {
                         //Store
                         if (!!localStorage) {
                             localStorage.setItem("token", token);
-                            localStorage.setItem("user", user);
+                            localStorage.setItem("user", JSON.stringify(user));
                             localStorage.setItem("date", new Date().toJSON());
                         }
                     },
@@ -29201,6 +29207,11 @@ var AuthService = function () {
             user = null;
             return new Promise(function (resolve, reject) {
                 console.log("AuthService.LOgout");
+
+                if (!!localStorage) {
+                    localStorage.clear();
+                }
+
                 resolve("ok");
                 //$.ajax({
                 //    url: Apis.LOGOUT_URI,
@@ -29573,85 +29584,81 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 var Uris = require('./Uris');
 
+var auth = require('./AuthService');
+
 var Menu = function (_React$Component) {
-           _inherits(Menu, _React$Component);
+    _inherits(Menu, _React$Component);
 
-           function Menu(props) {
-                      _classCallCheck(this, Menu);
+    function Menu(props) {
+        _classCallCheck(this, Menu);
 
-                      return _possibleConstructorReturn(this, Object.getPrototypeOf(Menu).call(this, props));
-           }
+        return _possibleConstructorReturn(this, Object.getPrototypeOf(Menu).call(this, props));
+    }
 
-           _createClass(Menu, [{
-                      key: 'render',
-                      value: function render() {
-                                 var $this = this;
+    _createClass(Menu, [{
+        key: 'render',
+        value: function render() {
+            var $this = this;
 
-                                 return _react2.default.createElement(
-                                            'div',
-                                            { className: 'list-group' },
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.BASE_URI, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'Dashboard'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.PRODUCT.CREATE, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'Create Product'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.PRODUCT.BASE, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'View Products'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.SELL.CREATE, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'Make Sale'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.parameterize(Uris.SELL.BASE, { tab: 1 }), activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'View Sales'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.USER.BASE, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'View Users'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.INVENTORY.BASE, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'View Inventories'
-                                            ),
-                                            _react2.default.createElement(
-                                                       _reactRouter.IndexLink,
-                                                       { to: Uris.UNIT.BASE, activeClassName: 'active',
-                                                                  className: 'list-group-item' },
-                                                       'View Units'
-                                            )
-                                 );
-                      }
-           }]);
+            return _react2.default.createElement(
+                'div',
+                { className: 'list-group' },
+                auth.currentUser().username != "admin" ? null : _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.PRODUCT.CREATE, activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'Create Product'
+                ),
+                _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.PRODUCT.BASE, activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'View Products'
+                ),
+                _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.SELL.CREATE, activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'Make Sale'
+                ),
+                _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.parameterize(Uris.SELL.BASE, { tab: 1 }), activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'View Sales'
+                ),
+                _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.USER.BASE, activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'View Users'
+                ),
+                _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.INVENTORY.BASE, activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'View Inventories'
+                ),
+                _react2.default.createElement(
+                    _reactRouter.IndexLink,
+                    { to: Uris.UNIT.BASE, activeClassName: 'active',
+                        className: 'list-group-item' },
+                    'View Units'
+                )
+            );
+        }
+    }]);
 
-           return Menu;
+    return Menu;
 }(_react2.default.Component);
 
 Menu.defaultProps = {
-           onClick: null
+    onClick: null
 };
 
 module.exports = Menu;
 
-},{"./Uris":174,"react":791,"react-router":522}],171:[function(require,module,exports){
+},{"./AuthService":162,"./Uris":174,"react":791,"react-router":522}],171:[function(require,module,exports){
 "use strict";
 
 var React = require('react');
@@ -30027,6 +30034,8 @@ var unitService = require('../unit/UnitService');
 var inventoryService = require('./InventoryService');
 var productService = require('../product/ProductService');
 
+var auth = require('../AuthService');
+
 var AddRemoveEditProducts = React.createClass({
     displayName: 'AddRemoveEditProducts',
 
@@ -30083,17 +30092,22 @@ var AddRemoveEditProducts = React.createClass({
             });
         });
         productService.findAllDecomposed().then(function (rsp) {
-            return $this.setState({
+            return {
                 products: rsp.data,
                 productsById: rsp.data.reduce(function (rr, pro) {
                     rr[pro.id] = pro;
                     return rr;
                 }, {})
+            };
+        }).then(function (state) {
+            return inventoryService.findAllProducts($this.props.params.id).then(function (rsp) {
+                state.inventoryProducts = rsp.data;
+                return state;
             });
+        }).then(function (state) {
+            return $this.setState($this.intercept(state));
         });
-        inventoryService.findAllProducts($this.props.params.id).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
-        });
+
         inventoryService.find($this.props.params.id).then(function (inventory) {
             return $this.setState({ inventory: inventory });
         });
@@ -30311,7 +30325,7 @@ var AddRemoveEditProducts = React.createClass({
         e.preventDefault();
         inventoryService.insertProduct($this.state.product, $this.state.inventory.id).then(function () {
             return inventoryService.findAllProducts($this.props.params.id).then(function (rsp) {
-                return $this.setState({ inventoryProducts: rsp.data });
+                return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
             });
         }).then(function () {
 
@@ -30370,15 +30384,15 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.deleteProduct(item.id).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
     },
     onQuantityChange: function onQuantityChange(e, item) {
         var $this = this;
         item.__quantity__ = e.target.value;
-        $this.setState({
+        $this.setState($this.intercept({
             inventoryProducts: $this.state.inventoryProducts
-        });
+        }));
     },
     formatAction: function formatAction(action, item) {
         var $this = this;
@@ -30404,21 +30418,26 @@ var AddRemoveEditProducts = React.createClass({
                         style: { marginRight: '5px' } },
                     'Add'
                 ),
-                React.createElement(
-                    'span',
-                    { className: 'btn btn-success', onClick: function onClick() {
-                            return $this.doRemove(item);
-                        },
-                        style: { marginRight: '5px' } },
-                    'Remove'
-                ),
-                React.createElement(
-                    'span',
-                    { className: 'btn btn-danger', onClick: function onClick() {
-                            return $this.editProduct(item);
-                        },
-                        style: { marginRight: '5px' } },
-                    'Edit'
+                auth.currentUser().username != "admin" ? null : React.createElement(
+                    'div',
+                    null,
+                    React.createElement(
+                        'span',
+                        { className: 'btn btn-success',
+                            onClick: function onClick() {
+                                return $this.doRemove(item);
+                            },
+                            style: { marginRight: '5px' } },
+                        'Remove'
+                    ),
+                    React.createElement(
+                        'span',
+                        { className: 'btn btn-danger', onClick: function onClick() {
+                                return $this.editProduct(item);
+                            },
+                            style: { marginRight: '5px' } },
+                        'Edit'
+                    )
                 ),
                 React.createElement(
                     'span',
@@ -30436,7 +30455,7 @@ var AddRemoveEditProducts = React.createClass({
                         style: { marginRight: '5px' } },
                     'Bring'
                 ),
-                React.createElement(
+                auth.currentUser().username != "admin" ? null : React.createElement(
                     'span',
                     { className: 'btn btn-danger pull-right',
                         onClick: function onClick(e) {
@@ -30707,7 +30726,7 @@ var AddRemoveEditProducts = React.createClass({
     onInvenotryChange: function onInvenotryChange(e, inv) {
         var $this = this;
         inv[e.target.name] = e.target.value;
-        $this.setState({ inventoryProducts: $this.state.inventoryProducts });
+        $this.setState($this.intercept({ inventoryProducts: $this.state.inventoryProducts }));
     },
     closeModal: function closeModal() {
         var $this = this;
@@ -30723,7 +30742,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.addProduct(item.id, item.__quantity__).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
 
         this.closeModal();
@@ -30734,7 +30753,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.removeProduct(item.id, item.__quantity__).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
 
         this.closeModal();
@@ -30745,7 +30764,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.editProductQuantity(item.id, item.quantity, item.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         });
 
         this.closeModal();
@@ -30755,7 +30774,7 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.transferTo(inv.inventoryId, inv.destInventoryId, inv.productId, inv.__quantity__, inv.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         }).then(function () {
             return $this.setState({ isModalOpen: false });
         });
@@ -30765,16 +30784,34 @@ var AddRemoveEditProducts = React.createClass({
         inventoryService.transferTo(inv.srcInventoryId, inv.inventoryId, inv.productId, inv.__quantity__, inv.unitId).then(function () {
             return inventoryService.findAllProducts($this.props.params.id);
         }).then(function (rsp) {
-            return $this.setState({ inventoryProducts: rsp.data });
+            return $this.setState($this.intercept({ inventoryProducts: rsp.data }));
         }).then(function () {
             return $this.setState({ isModalOpen: false });
         });
+    },
+
+    intercept: function intercept(state) {
+        var $this = this;
+        var productsById = state.productsById || $this.state.productsById || {};
+
+        state.inventoryProducts = state.inventoryProducts || [];
+
+        //console.error("productsById", JSON.stringify(productsById));
+        //console.error("state.inventoryProducts", JSON.stringify(state.inventoryProducts));
+
+        state.inventoryProducts = state.inventoryProducts.sort(function (a, b) {
+            return (productsById[a.productId] || {}).name > (productsById[b.productId] || {}).name;
+        });
+
+        //console.error("sorted state.inventoryProducts", JSON.stringify(state.inventoryProducts));
+
+        return state;
     }
 });
 
 module.exports = AddRemoveEditProducts;
 
-},{".././Modal":171,"../product/ProductService":865,"../unit/UnitService":1109,"./AddAnotherProductForm":177,"./AddRemoveEditForm":178,"./InventoryService":183,"react":791,"react-bootstrap-table":249}],180:[function(require,module,exports){
+},{".././Modal":171,"../AuthService":162,"../product/ProductService":865,"../unit/UnitService":1109,"./AddAnotherProductForm":177,"./AddRemoveEditForm":178,"./InventoryService":183,"react":791,"react-bootstrap-table":249}],180:[function(require,module,exports){
 "use strict";
 
 var React = require('react');
@@ -31412,6 +31449,7 @@ var inventoryService = require("./InventoryService");
 var ee = require('../EventEmitter');
 var Events = require('./Events');
 var Uris = require('../Uris');
+var auth = require('../AuthService');
 
 var ListInventories;
 module.exports = ListInventories = React.createClass({
@@ -31452,6 +31490,8 @@ module.exports = ListInventories = React.createClass({
         var $this = this;
         var inventories = $this.state.inventories || [];
 
+        var editable = auth.currentUser().username == "admin";
+
         return React.createElement(
             'div',
             { className: 'row' },
@@ -31481,7 +31521,7 @@ module.exports = ListInventories = React.createClass({
                             React.createElement(
                                 'div',
                                 { className: 'col-md-4' },
-                                React.createElement(
+                                auth.currentUser().username != "admin" ? null : React.createElement(
                                     'span',
                                     { className: 'btn btn-primary pull-right',
                                         onClick: $this.createNewInventory },
@@ -31500,7 +31540,7 @@ module.exports = ListInventories = React.createClass({
                         ),
                         React.createElement(
                             _reactBootstrapTable.TableHeaderColumn,
-                            { dataField: 'name' },
+                            { dataField: 'name', editable: editable },
                             'Name'
                         ),
                         React.createElement(
@@ -31510,7 +31550,7 @@ module.exports = ListInventories = React.createClass({
                         ),
                         React.createElement(
                             _reactBootstrapTable.TableHeaderColumn,
-                            { dataField: 'remarks' },
+                            { dataField: 'remarks', editable: editable },
                             'Remarks'
                         ),
                         React.createElement(
@@ -31551,7 +31591,7 @@ module.exports = ListInventories = React.createClass({
                     style: { marginRight: '5px' }, title: 'View this inventory.' },
                 'View'
             ),
-            React.createElement(
+            auth.currentUser().username != "admin" ? null : React.createElement(
                 'span',
                 { className: 'btn btn-danger', title: 'Delete this inventory.',
                     onClick: function onClick() {
@@ -31587,7 +31627,7 @@ module.exports = ListInventories = React.createClass({
     }
 });
 
-},{"../EventEmitter":167,"../Uris":174,"./Events":181,"./InventoryService":183,"./NewInventoryDialog":186,"react":791,"react-bootstrap-table":249}],186:[function(require,module,exports){
+},{"../AuthService":162,"../EventEmitter":167,"../Uris":174,"./Events":181,"./InventoryService":183,"./NewInventoryDialog":186,"react":791,"react-bootstrap-table":249}],186:[function(require,module,exports){
 "use strict";
 
 var _react = require('react');
@@ -32158,6 +32198,7 @@ var ee = require('../EventEmitter');
 var Events = require('../user/Events');
 
 var handlers = {};
+var auth = require('../AuthService');
 
 var NavbarCollapse = function (_React$Component) {
     _inherits(NavbarCollapse, _React$Component);
@@ -32263,7 +32304,16 @@ var NavbarCollapse = function (_React$Component) {
                             'Users'
                         )
                     ),
-                    _react2.default.createElement(
+                    auth.currentUser().username != "admin" ? _react2.default.createElement(
+                        'li',
+                        null,
+                        _react2.default.createElement(
+                            _reactRouter.Link,
+                            { to: Uris.SELL.CREATE,
+                                activeClassName: 'active' },
+                            'Create Sale'
+                        )
+                    ) : _react2.default.createElement(
                         'li',
                         { className: 'dropdown' },
                         _react2.default.createElement(
@@ -95951,13 +96001,15 @@ var productService = require('./ProductService');
 var unitService = require('../unit/UnitService');
 var Uris = require('../Uris');
 
+var auth = require('../AuthService');
+
 var CreateProduct;
 module.exports = CreateProduct = _react2.default.createClass({
     displayName: 'CreateProduct',
 
     getInitialState: function getInitialState() {
         return {
-            product: {},
+            product: { forSale: true },
             prices: [],
             productInventories: [{
                 id: Math.random(),
@@ -95995,7 +96047,7 @@ module.exports = CreateProduct = _react2.default.createClass({
     componentWillUnmount: function componentWillUnmount() {},
     render: function render() {
         var $this = this;
-        var product = $this.state.product || {};
+        var product = $this.state.product || { forSale: true };
         var prices = $this.state.prices || [];
         var productInventories = $this.state.productInventories || [];
 
@@ -96003,6 +96055,15 @@ module.exports = CreateProduct = _react2.default.createClass({
         var modal = !!createModal ? createModal() || {} : {};
         var units = $this.state.units || [];
         var inventories = $this.state.inventories;
+
+        if (auth.currentUser().username != "admin") {
+            return _react2.default.createElement(
+                'h2',
+                null,
+                'You do not have right to create product.'
+            );
+        }
+
         return _react2.default.createElement(
             'div',
             { className: 'row' },
@@ -96119,6 +96180,26 @@ module.exports = CreateProduct = _react2.default.createClass({
                                                 unit.name
                                             );
                                         })
+                                    )
+                                ),
+                                _react2.default.createElement(
+                                    'div',
+                                    { className: 'form-group col-md-12' },
+                                    _react2.default.createElement(
+                                        'div',
+                                        { className: 'checkbox' },
+                                        _react2.default.createElement(
+                                            'label',
+                                            null,
+                                            _react2.default.createElement('input', { type: 'checkbox', name: 'forSale', value: product.forSale,
+                                                checked: !!product.forSale,
+                                                onChange: function onChange(e) {
+                                                    product.forSale = !product.forSale;
+                                                    $this.setState({ product: product });
+                                                }
+                                            }),
+                                            ' For Sale'
+                                        )
                                     )
                                 ),
                                 _react2.default.createElement(
@@ -96297,7 +96378,7 @@ module.exports = CreateProduct = _react2.default.createClass({
     }
 });
 
-},{".././Modal":171,".././functions":176,"../Uris":174,"../unit/UnitService":1109,"./../unit/NewUnitDialog":1107,"./ProductService":865,"./ProductsInventoryEditable":867,"./ProductsUnitWisePrice":869,"./ProductsUnitWisePriceEditable":870,"./SingleProductViewShort":872,"react":791}],859:[function(require,module,exports){
+},{".././Modal":171,".././functions":176,"../AuthService":162,"../Uris":174,"../unit/UnitService":1109,"./../unit/NewUnitDialog":1107,"./ProductService":865,"./ProductsInventoryEditable":867,"./ProductsUnitWisePrice":869,"./ProductsUnitWisePriceEditable":870,"./SingleProductViewShort":872,"react":791}],859:[function(require,module,exports){
 "use strict";
 
 var _react = require('react');
@@ -96317,6 +96398,7 @@ var ProductsInventoryEditable = require('./ProductsInventoryEditable');
 var productService = require('./ProductService');
 var unitService = require('../unit/UnitService');
 var Uris = require('../Uris');
+var auth = require('../AuthService');
 
 var CreateProduct;
 module.exports = CreateProduct = _react2.default.createClass({
@@ -96376,6 +96458,15 @@ module.exports = CreateProduct = _react2.default.createClass({
         var modal = !!createModal ? createModal() || {} : {};
         var units = $this.state.units || [];
         var inventories = $this.state.inventories;
+
+        if (auth.currentUser().username != "admin") {
+            return _react2.default.createElement(
+                'h2',
+                null,
+                'You do not have sufficient right to edit product.'
+            );
+        }
+
         return _react2.default.createElement(
             'div',
             { className: 'row' },
@@ -96492,6 +96583,26 @@ module.exports = CreateProduct = _react2.default.createClass({
                                                 unit.name
                                             );
                                         })
+                                    )
+                                ),
+                                _react2.default.createElement(
+                                    'div',
+                                    { className: 'form-group col-md-12' },
+                                    _react2.default.createElement(
+                                        'div',
+                                        { className: 'checkbox' },
+                                        _react2.default.createElement(
+                                            'label',
+                                            null,
+                                            _react2.default.createElement('input', { type: 'checkbox', name: 'forSale', value: product.forSale,
+                                                checked: !!product.forSale,
+                                                onChange: function onChange(e) {
+                                                    product.forSale = !product.forSale;
+                                                    $this.setState({ product: product });
+                                                }
+                                            }),
+                                            ' For Sale'
+                                        )
                                     )
                                 ),
                                 _react2.default.createElement(
@@ -96670,7 +96781,7 @@ module.exports = CreateProduct = _react2.default.createClass({
     }
 });
 
-},{".././Modal":171,".././functions":176,"../Uris":174,"../unit/UnitService":1109,"./../unit/NewUnitDialog":1107,"./ProductService":865,"./ProductsInventoryEditable":867,"./ProductsUnitWisePrice":869,"./ProductsUnitWisePriceEditable":870,"./SingleProductViewShort":872,"react":791}],860:[function(require,module,exports){
+},{".././Modal":171,".././functions":176,"../AuthService":162,"../Uris":174,"../unit/UnitService":1109,"./../unit/NewUnitDialog":1107,"./ProductService":865,"./ProductsInventoryEditable":867,"./ProductsUnitWisePrice":869,"./ProductsUnitWisePriceEditable":870,"./SingleProductViewShort":872,"react":791}],860:[function(require,module,exports){
 'use strict';
 
 var Events = {
@@ -96694,6 +96805,8 @@ var SingleProductViewShort = require('./SingleProductViewShort');
 var ProductList = require('./ProductList');
 var Uris = require('../Uris');
 var productService = require('./ProductService');
+
+var authService = require('../AuthService');
 
 var ListProduct;
 module.exports = ListProduct = _react2.default.createClass({
@@ -96823,7 +96936,7 @@ module.exports = ListProduct = _react2.default.createClass({
                     _react2.default.createElement(
                         'div',
                         { className: 'col-md-2' },
-                        _react2.default.createElement(
+                        authService.currentUser().username != "admin" ? null : _react2.default.createElement(
                             'a',
                             { className: 'btn btn-primary pull-right',
                                 href: Uris.toAbsoluteUri(Uris.PRODUCT.CREATE) },
@@ -96837,7 +96950,7 @@ module.exports = ListProduct = _react2.default.createClass({
     }
 });
 
-},{"../Uris":174,"./ProductList":864,"./ProductService":865,"./SingleProductViewShort":872,"react":791}],862:[function(require,module,exports){
+},{"../AuthService":162,"../Uris":174,"./ProductList":864,"./ProductService":865,"./SingleProductViewShort":872,"react":791}],862:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -96920,6 +97033,8 @@ var PriceView = require('./PriceView');
 var PricePerUnit = require('./PricePerUnit');
 var Uris = require('../Uris');
 
+var authService = require('../AuthService');
+
 var ProductList;
 module.exports = ProductList = React.createClass({
     displayName: 'ProductList',
@@ -96927,9 +97042,13 @@ module.exports = ProductList = React.createClass({
     getDefaultProps: function getDefaultProps() {
         return { products: [] };
     },
+    componentDidMount: function componentDidMount() {
+        var $this = this;
+    },
     render: function render() {
         var $this = this;
         var products = $this.props.products;
+        var currentUser = authService.currentUser();
         return React.createElement(
             'div',
             { className: 'row' },
@@ -96957,8 +97076,17 @@ module.exports = ProductList = React.createClass({
                     ),
                     React.createElement(
                         _reactBootstrapTable.TableHeaderColumn,
-                        { dataField: 'manufacturerPrice', dataFormat: $this.formatManufacturerPrice },
+                        { hidden: currentUser.username != "admin", dataField: 'manufacturerPrice',
+                            dataFormat: $this.formatManufacturerPrice },
                         'Manufacturer Price'
+                    ),
+                    React.createElement(
+                        _reactBootstrapTable.TableHeaderColumn,
+                        { dataField: 'forSale',
+                            dataFormat: function dataFormat(forSale) {
+                                return !!forSale ? 'Yes' : 'No';
+                            } },
+                        'For Sale'
                     ),
                     React.createElement(
                         _reactBootstrapTable.TableHeaderColumn,
@@ -97008,16 +97136,17 @@ module.exports = ProductList = React.createClass({
                 { href: Uris.toAbsoluteUri(Uris.PRODUCT.VIEW, { id: product.id }), className: 'btn btn-sm btn-primary' },
                 'View'
             ),
-            React.createElement(
+            authService.currentUser().username != "admin" ? null : React.createElement(
                 'a',
-                { href: Uris.toAbsoluteUri(Uris.PRODUCT.EDIT, { id: product.id }), className: 'btn btn-sm btn-warning' },
+                { href: Uris.toAbsoluteUri(Uris.PRODUCT.EDIT, { id: product.id }),
+                    className: 'btn btn-sm btn-warning' },
                 'Edit'
             )
         );
     }
 });
 
-},{"../Uris":174,"./PricePerUnit":862,"./PriceView":863,"./ProductsInventoryView":868,"react":791,"react-bootstrap-table":249}],865:[function(require,module,exports){
+},{"../AuthService":162,"../Uris":174,"./PricePerUnit":862,"./PriceView":863,"./ProductsInventoryView":868,"react":791,"react-bootstrap-table":249}],865:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -97727,6 +97856,7 @@ var PriceView = require('./PriceView');
 var PricePerUnit = require('./PricePerUnit');
 var ProductStockViewEmbed = require('./ProductStockViewEmbed');
 var ProductsInventoryView = require('./ProductsInventoryView');
+var auth = require('../AuthService');
 
 var SingleProductViewShort;
 module.exports = SingleProductViewShort = _react2.default.createClass({
@@ -97799,7 +97929,7 @@ module.exports = SingleProductViewShort = _react2.default.createClass({
                         _react2.default.createElement(PriceView, { prices: product.prices })
                     )
                 ),
-                _react2.default.createElement(
+                auth.currentUser().username != "admin" ? null : _react2.default.createElement(
                     'tr',
                     null,
                     _react2.default.createElement(
@@ -97848,7 +97978,7 @@ module.exports = SingleProductViewShort = _react2.default.createClass({
     }
 });
 
-},{"./PricePerUnit":862,"./PriceView":863,"./ProductStockViewEmbed":866,"./ProductsInventoryView":868,"react":791}],873:[function(require,module,exports){
+},{"../AuthService":162,"./PricePerUnit":862,"./PriceView":863,"./ProductStockViewEmbed":866,"./ProductsInventoryView":868,"react":791}],873:[function(require,module,exports){
 "use strict";
 
 var _react = require('react');
@@ -97863,6 +97993,8 @@ var ProductsUnitWisePrice = require('./ProductsUnitWisePrice');
 var productService = require('./ProductService');
 
 var Uris = require('../Uris');
+
+var auth = require('../AuthService');
 
 var ViewProduct;
 module.exports = ViewProduct = _react2.default.createClass({
@@ -97922,7 +98054,7 @@ module.exports = ViewProduct = _react2.default.createClass({
                                 _react2.default.createElement(
                                     'div',
                                     { className: 'btn-group btn-group-justified' },
-                                    _react2.default.createElement(
+                                    auth.currentUser().username != "admin" ? null : _react2.default.createElement(
                                         'a',
                                         { href: Uris.toAbsoluteUri(Uris.PRODUCT.EDIT, { id: id }),
                                             className: 'btn btn-primary',
@@ -97944,7 +98076,7 @@ module.exports = ViewProduct = _react2.default.createClass({
     }
 });
 
-},{"../Uris":174,"./ProductService":865,"./ProductsUnitWisePrice":869,"./SingleProductViewShort":872,"react":791}],874:[function(require,module,exports){
+},{"../AuthService":162,"../Uris":174,"./ProductService":865,"./ProductsUnitWisePrice":869,"./SingleProductViewShort":872,"react":791}],874:[function(require,module,exports){
 (function (global){
 /**
  * Stream.js v1.6.4
@@ -99319,6 +99451,7 @@ module.exports = CreateSell = React.createClass({
                 consumerMobile: '',
                 sellDate: new Date(),
                 createdBy: authService.currentUser(),
+                status: true,
                 remarks: ''
             },
             sellUnitsByProductId: {},
@@ -99333,13 +99466,14 @@ module.exports = CreateSell = React.createClass({
     componentDidMount: function componentDidMount() {
 
         var $this = this;
+
         console.log("MOUNTING: SELL_CREATE");
         ee.on(Events.SUBMIT_REQUESTED, function (sell) {
             console.log(sell);
             sellService.create(sell).then(sellService.find).then($this.showOrderSuccess);
         });
 
-        var productPromise1 = productService.findAllDecomposed().then(function (rsp) {
+        var productPromise1 = productService.findAllDecomposed({ forSale: true }).then(function (rsp) {
             var sellUnits = rsp.data.map(function (product) {
                 return { no: Math.random(), productId: product.id };
             });
@@ -99447,12 +99581,48 @@ module.exports = CreateSell = React.createClass({
                             { className: 'row' },
                             React.createElement(
                                 'div',
-                                { className: 'col-md-9' },
+                                { className: 'col-md-2' },
                                 'Products'
                             ),
                             React.createElement(
                                 'div',
-                                { className: 'col-md-3' },
+                                { className: 'col-md-10' },
+                                React.createElement(
+                                    'div',
+                                    { className: 'checkbox',
+                                        style: { marginRight: '30px', display: 'inline-block' } },
+                                    React.createElement(
+                                        'label',
+                                        { style: { fontWeight: 'initial' } },
+                                        React.createElement('input', { type: 'checkbox', name: 'status',
+                                            value: sell.status,
+                                            checked: !!sell.status,
+                                            onChange: function onChange(e) {
+                                                sell.status = !sell.status;
+                                                $this.setState({ sell: sell });
+                                            }
+                                        }),
+                                        !!sell.status ? React.createElement(
+                                            'span',
+                                            null,
+                                            React.createElement(
+                                                'strong',
+                                                null,
+                                                'Clear'
+                                            ),
+                                            ' / Holding'
+                                        ) : React.createElement(
+                                            'span',
+                                            null,
+                                            'Clear / ',
+                                            React.createElement(
+                                                'strong',
+                                                null,
+                                                'Holding'
+                                            )
+                                        )
+                                    )
+                                ),
                                 React.createElement(
                                     'button',
                                     { className: 'btn btn-primary pull-right',
@@ -99463,7 +99633,7 @@ module.exports = CreateSell = React.createClass({
                                 React.createElement(
                                     'button',
                                     { className: 'btn btn-danger pull-right',
-                                        style: { fontWeight: 'bold', marginRight: '10px' },
+                                        style: { fontWeight: 'bold', marginRight: '30px' },
                                         onClick: $this.clearAllUnits },
                                     'Clear All'
                                 )
@@ -99730,7 +99900,7 @@ module.exports = CreateSellGrid = _react2.default.createClass({
         var productsUnitWisePrice = $this.props.productsUnitWisePrice;
         var unitsById = $this.props.unitsById;
 
-        var totalCounter = { quantity: 0, total: 0 };
+        var totalCounter = { quantity: 0.0, total: 0.0 };
         var serial = 1;
         var sUnits = Stream(Object.keys(productsById)).map(function (productId) {
             return sellUnitsByProductId[productId] || {
@@ -99738,8 +99908,8 @@ module.exports = CreateSellGrid = _react2.default.createClass({
                 productId: productId
             };
         }).peek(function (unit) {
-            totalCounter.quantity = totalCounter.quantity + (parseInt(unit.quantity) || 0);
-            totalCounter.total = totalCounter.total + (parseInt(unit.total) || 0);
+            totalCounter.quantity = totalCounter.quantity + (parseFloat(unit.quantity) || 0);
+            totalCounter.total = totalCounter.total + (parseFloat(unit.total) || 0);
         }).map(function (unit) {
             return lib.merge2(unit, {
                 serial: serial++,
@@ -99773,10 +99943,11 @@ module.exports = CreateSellGrid = _react2.default.createClass({
                     })
                 ),
                 unitPrice: _react2.default.createElement('input', { className: 'form-control', type: 'number', style: { width: '120px' },
-                    name: 'unitPrice', value: unit.unitPrice, readOnly: true
+                    name: 'unitPrice', value: !unit.unitPrice ? null : unit.unitPrice.toFixed(2),
+                    readOnly: true
                 }),
                 total: _react2.default.createElement('input', { className: 'form-control', type: 'number', style: { width: '120px', textAlign: 'right' },
-                    name: 'total', value: unit.total, readOnly: true
+                    name: 'total', value: !unit.total ? null : unit.total.toFixed(2), readOnly: true
                 }),
                 action: _react2.default.createElement(
                     'button',
@@ -99796,12 +99967,9 @@ module.exports = CreateSellGrid = _react2.default.createClass({
                 'Total'
             ),
             quantity: _react2.default.createElement('input', { className: 'form-control', type: 'number', style: { width: '100px', textAlign: 'right' },
-                value: totalCounter.quantity,
-                onChange: function onChange(e) {
-                    $this.onChange(e, unit);
-                } }),
+                value: totalCounter.quantity, readOnly: true }),
             total: _react2.default.createElement('input', { className: 'form-control', type: 'number', style: { width: '120px', textAlign: 'right' },
-                value: totalCounter.total, readOnly: true })
+                value: !totalCounter.total ? null : totalCounter.total.toFixed(2), readOnly: true })
         });
 
         return _react2.default.createElement(
@@ -100154,7 +100322,7 @@ module.exports = EditSell = React.createClass({
             sellService.update(sell).then(sellService.find).then($this.showOrderSuccess);
         });
 
-        var productPromise1 = productService.findAllDecomposed().then(function (rsp) {
+        var productPromise1 = productService.findAllDecomposed({ forSale: true }).then(function (rsp) {
             var sellUnits = rsp.data.map(function (product) {
                 return { no: Math.random(), productId: product.id };
             });
@@ -100277,12 +100445,48 @@ module.exports = EditSell = React.createClass({
                             { className: 'row' },
                             React.createElement(
                                 'div',
-                                { className: 'col-md-9' },
+                                { className: 'col-md-2' },
                                 'Products'
                             ),
                             React.createElement(
                                 'div',
-                                { className: 'col-md-3' },
+                                { className: 'col-md-10' },
+                                React.createElement(
+                                    'div',
+                                    { className: 'checkbox',
+                                        style: { marginRight: '30px', display: 'inline-block' } },
+                                    React.createElement(
+                                        'label',
+                                        { style: { fontWeight: 'bold' } },
+                                        React.createElement('input', { type: 'checkbox', name: 'status',
+                                            value: sell.status,
+                                            checked: !!sell.status,
+                                            onChange: function onChange(e) {
+                                                sell.status = !sell.status;
+                                                $this.setState({ sell: sell });
+                                            }
+                                        }),
+                                        !!sell.status ? React.createElement(
+                                            'span',
+                                            null,
+                                            React.createElement(
+                                                'strong',
+                                                null,
+                                                'Clear'
+                                            ),
+                                            ' / Holding'
+                                        ) : React.createElement(
+                                            'span',
+                                            null,
+                                            'Clear / ',
+                                            React.createElement(
+                                                'strong',
+                                                null,
+                                                'Holding'
+                                            )
+                                        )
+                                    )
+                                ),
                                 React.createElement(
                                     'button',
                                     { className: 'btn btn-primary pull-right',
@@ -100293,7 +100497,7 @@ module.exports = EditSell = React.createClass({
                                 React.createElement(
                                     'button',
                                     { className: 'btn btn-danger pull-right',
-                                        style: { fontWeight: 'bold', marginRight: '10px' },
+                                        style: { fontWeight: 'bold', marginRight: '30px' },
                                         onClick: $this.clearAllUnits },
                                     'Clear All'
                                 )
@@ -100378,7 +100582,7 @@ module.exports = EditSell = React.createClass({
                 title: React.createElement(
                     'h4',
                     { className: 'modal-title text-primary', id: 'myModalLabel' },
-                    'Order created successfully. Order ID: ',
+                    'Order updated successfully. Order ID: ',
                     React.createElement(
                         'strong',
                         {
@@ -100650,9 +100854,7 @@ module.exports = ListSells = _react2.default.createClass({
 
     getDefaultProps: function getDefaultProps() {
         return {
-            params: {
-                tab: 1
-            }
+            params: {}
         };
     },
     getInitialState: function getInitialState() {
@@ -100758,6 +100960,7 @@ module.exports = ListSells = _react2.default.createClass({
     render: function render() {
         var $this = this;
         var sells = $this.state.sells;
+        var form = $this.state.form || {};
 
         return _react2.default.createElement(
             'div',
@@ -100765,6 +100968,92 @@ module.exports = ListSells = _react2.default.createClass({
             _react2.default.createElement(
                 'div',
                 { className: 'panel-body' },
+                _react2.default.createElement(
+                    'form',
+                    { onSubmit: function onSubmit(e) {
+                            e.preventDefault();
+                            $this.submitForm(form);
+                        } },
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'form-group col-md-2' },
+                        _react2.default.createElement(
+                            'label',
+                            { htmlFor: 's.transactionId' },
+                            'Transaction ID'
+                        ),
+                        _react2.default.createElement('input', { type: 'text', className: 'form-control', id: 's.transactionId',
+                            name: 's.transactionId', value: form['s.transactionId'],
+                            onChange: function onChange(e) {
+                                form[e.target.name] = e.target.value;
+                                $this.setState({ form: form });
+                            },
+                            placeholder: 'Transaction ID' })
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'form-group col-md-2' },
+                        _react2.default.createElement(
+                            'label',
+                            { htmlFor: 's.orderId' },
+                            'Order ID'
+                        ),
+                        _react2.default.createElement('input', { type: 'text', className: 'form-control', id: 's.orderId',
+                            name: 's.orderId', value: form['s.orderId'],
+                            onChange: function onChange(e) {
+                                form[e.target.name] = e.target.value;
+                                $this.setState({ form: form });
+                            },
+                            placeholder: 'Order ID' })
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'form-group col-md-2' },
+                        _react2.default.createElement(
+                            'label',
+                            { htmlFor: 's.status' },
+                            'Status'
+                        ),
+                        _react2.default.createElement(
+                            'select',
+                            { className: 'form-control', id: 's.status',
+                                name: 's.status', value: form['s.status'],
+                                onChange: function onChange(e) {
+                                    form[e.target.name] = e.target.value;
+                                    $this.setState({ form: form });
+                                } },
+                            ["Select", "Holding", "Created"].map(function (op, ind) {
+                                return _react2.default.createElement(
+                                    'option',
+                                    { key: ind, value: ind },
+                                    op
+                                );
+                            })
+                        )
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'form-group col-md-2' },
+                        _react2.default.createElement(
+                            'label',
+                            { htmlFor: 's.consumerMobile' },
+                            'Consumer Mobile'
+                        ),
+                        _react2.default.createElement('input', { type: 'text', className: 'form-control', id: 's.consumerMobile',
+                            name: 's.consumerMobile', value: form['s.consumerMobile'],
+                            onChange: function onChange(e) {
+                                form[e.target.name] = e.target.value;
+                                $this.setState({ form: form });
+                            },
+                            placeholder: 'Consumer Mobile' })
+                    ),
+                    _react2.default.createElement(
+                        'div',
+                        { className: 'form-group col-md-2 pull-right' },
+                        _react2.default.createElement('input', { type: 'submit', className: 'btn btn-primary btn-lg pull-right',
+                            style: { marginTop: '4px' }, value: 'Submit' })
+                    )
+                ),
                 sells.map(function (sell) {
 
                     var sellUnits = sell.sellUnits || [];
@@ -100845,9 +101134,18 @@ module.exports = ListSells = _react2.default.createClass({
             )
         );
     },
-    switchToTab: function switchToTab(tab) {
-        console.log("tab", tab);
-        _reactRouter.browserHistory.push(Uris.toAbsoluteUri(lib.parameterize(Uris.SELL.BASE, { tab: tab })));
+    submitForm: function submitForm(form) {
+        var $this = this;
+
+        var ps = parseInt(form['s.status']);
+
+        form = lib.merge2(form, {
+            's.status': ps == 0 ? null : ps == 1 ? false : true
+        });
+
+        sellService.findAll(form).then(function (rsp) {
+            $this.setState({ sells: rsp.data, pagination: rsp.pagination });
+        });
     }
 });
 
@@ -100874,18 +101172,18 @@ module.exports = OrderItemsTable = React.createClass({
         var $this = this;
         var sellUnits = $this.props.sellUnits || [];
 
-        console.log('OrderItemsTable: sellUnits', sellUnits);
-
-        var totalCounter = { quantity: 0, total: 0 };
+        var totalCounter = { quantity: 0.0, total: 0.0 };
         var serial = 1;
         sellUnits = Stream(sellUnits).peek(function (unit) {
-            totalCounter.quantity = totalCounter.quantity + (parseInt(unit.quantity) || 0);
-            totalCounter.total = totalCounter.total + (parseInt(unit.total) || 0);
+            totalCounter.quantity = totalCounter.quantity + (parseFloat(unit.quantity) || 0.0);
+            totalCounter.total = totalCounter.total + (parseFloat(unit.total) || 0.0);
         }).map(function (sellUnit) {
             return lib.merge2(sellUnit, {
                 serial: serial++,
                 productName: sellUnit.product.name,
-                unitName: sellUnit.unit.name
+                unitName: sellUnit.unit.name,
+                unitPrice: !sellUnit.unitPrice ? null : sellUnit.unitPrice.toFixed(2),
+                total: !sellUnit.total ? null : sellUnit.total.toFixed(2)
             });
         }).toArray();
 
@@ -100903,7 +101201,7 @@ module.exports = OrderItemsTable = React.createClass({
             total: React.createElement(
                 'strong',
                 null,
-                totalCounter.total
+                !totalCounter.total ? null : totalCounter.total.toFixed(2)
             )
         });
 
@@ -100923,7 +101221,7 @@ module.exports = OrderItemsTable = React.createClass({
             ),
             React.createElement(
                 _reactBootstrapTable.TableHeaderColumn,
-                { dataField: 'quantity' },
+                { dataField: 'quantity', dataAlign: 'right' },
                 'Quantity'
             ),
             React.createElement(
@@ -100933,12 +101231,12 @@ module.exports = OrderItemsTable = React.createClass({
             ),
             React.createElement(
                 _reactBootstrapTable.TableHeaderColumn,
-                { dataField: 'unitPrice' },
+                { dataField: 'unitPrice', dataAlign: 'right' },
                 'Unit Price'
             ),
             React.createElement(
                 _reactBootstrapTable.TableHeaderColumn,
-                { dataField: 'total' },
+                { dataField: 'total', dataAlign: 'right' },
                 'Total'
             )
         );
@@ -101076,6 +101374,24 @@ module.exports = SellHeader = React.createClass({
                         sell.consumerMobile
                     )
                 )
+            ),
+            React.createElement(
+                'div',
+                { className: 'col-md-6' },
+                React.createElement(
+                    'dl',
+                    { className: 'dl-horizontal', style: dlStyle },
+                    React.createElement(
+                        'dt',
+                        null,
+                        'Status:'
+                    ),
+                    React.createElement(
+                        'dd',
+                        null,
+                        !!sell.status ? "Clear" : "Holding"
+                    )
+                )
             )
         );
     }
@@ -101183,6 +101499,20 @@ var SellPreview = React.createClass({
                                 null,
                                 React.createElement(DateView, { value: sell.sellDate })
                             )
+                        ),
+                        React.createElement(
+                            'tr',
+                            null,
+                            React.createElement(
+                                'td',
+                                null,
+                                'Status'
+                            ),
+                            React.createElement(
+                                'th',
+                                { colSpan: '3' },
+                                !!sell.status ? 'Cleared' : 'Holding'
+                            )
                         )
                     )
                 )
@@ -101247,6 +101577,13 @@ var SellService = function () {
         key: 'findAll',
         value: function findAll(params) {
 
+            var pms = {};
+            for (var x in params) {
+                if (!(params[x] !== false && !params[x])) pms[x] = params[x];
+            }
+
+            params = pms;
+
             console.log("SEND." + ServerEvents.FIND_ALL_SELLS, JSON.stringify(params));
 
             return new Promise(function (resolve, reject) {
@@ -101289,12 +101626,14 @@ var SellService = function () {
         }
     }, {
         key: 'create',
-        value: function create(product) {
+        value: function create(sell) {
             return new Promise(function (resolve, reject) {
 
-                console.log("SEND." + ServerEvents.CREATE_SELL, JSON.stringify(product));
+                sell.status = !!sell.status;
 
-                eb.send(ServerEvents.CREATE_SELL, lib.merge2(product, { 'sellDate': product.sellDate.toJSON() }), null, function (err, msg) {
+                console.log("SEND." + ServerEvents.CREATE_SELL, JSON.stringify(sell));
+
+                eb.send(ServerEvents.CREATE_SELL, lib.merge2(sell, { 'sellDate': sell.sellDate.toJSON() }), null, function (err, msg) {
                     if (!!err || !!msg.failureCode || !!(msg.body || {}).responseCode) {
                         reject(err || msg);
 
@@ -101306,7 +101645,7 @@ var SellService = function () {
 
                     ee.emit(Events.SELL_CREATED, msg.body);
 
-                    console.log(Events.SELL_CREATED, product);
+                    console.log(Events.SELL_CREATED, sell);
                 });
             });
         }
@@ -102109,6 +102448,8 @@ var unitService = require('./UnitService');
 var ee = require('../EventEmitter');
 var Events = require('../Events');
 
+var auth = require('../AuthService');
+
 var ListUnits;
 module.exports = ListUnits = React.createClass({
     displayName: 'ListUnits',
@@ -102143,6 +102484,8 @@ module.exports = ListUnits = React.createClass({
     render: function render() {
         var $this = this;
         var units = $this.state.units;
+
+        var editable = auth.currentUser().username == "admin";
         return React.createElement(
             'div',
             { className: 'row' },
@@ -102170,7 +102513,7 @@ module.exports = ListUnits = React.createClass({
                             React.createElement(
                                 'div',
                                 { className: 'col-md-4' },
-                                React.createElement(
+                                auth.currentUser().username != "admin" ? null : React.createElement(
                                     'span',
                                     { className: 'btn btn-primary pull-right',
                                         onClick: $this.createNewUnit },
@@ -102189,23 +102532,24 @@ module.exports = ListUnits = React.createClass({
                         ),
                         React.createElement(
                             _reactBootstrapTable.TableHeaderColumn,
-                            { dataField: 'name' },
+                            { dataField: 'name', editable: editable },
                             'Name'
                         ),
                         React.createElement(
                             _reactBootstrapTable.TableHeaderColumn,
-                            { dataField: 'fullName' },
+                            { dataField: 'fullName', editable: editable },
                             'Full Name'
                         ),
                         React.createElement(
                             _reactBootstrapTable.TableHeaderColumn,
-                            { dataField: 'remarks' },
+                            { dataField: 'remarks', editable: editable },
                             'Remarks'
                         ),
                         React.createElement(
                             _reactBootstrapTable.TableHeaderColumn,
                             { dataField: 'action', editable: false,
-                                dataFormat: $this.formatAction },
+                                dataFormat: $this.formatAction,
+                                hidden: !editable },
                             'Action'
                         )
                     )
@@ -102263,7 +102607,7 @@ module.exports = ListUnits = React.createClass({
     }
 });
 
-},{".././EventBus":166,"../EventEmitter":167,"../Events":168,"../ServerEvents":172,"./NewUnitDialog":1107,"./UnitService":1109,"react":791,"react-bootstrap-table":249}],1107:[function(require,module,exports){
+},{".././EventBus":166,"../AuthService":162,"../EventEmitter":167,"../Events":168,"../ServerEvents":172,"./NewUnitDialog":1107,"./UnitService":1109,"react":791,"react-bootstrap-table":249}],1107:[function(require,module,exports){
 "use strict";
 
 var _react = require('react');
@@ -102950,6 +103294,8 @@ var userService = require('./UserService');
 var ee = require('./EventEmmiter');
 var Events = require('./Events');
 
+var auth = require('../AuthService');
+
 var ListUser = function (_React$Component) {
     _inherits(ListUser, _React$Component);
 
@@ -103054,7 +103400,7 @@ var ListUser = function (_React$Component) {
                                 _react2.default.createElement(
                                     'div',
                                     { className: 'col-md-6' },
-                                    _react2.default.createElement(
+                                    auth.currentUser().username != "admin" ? null : _react2.default.createElement(
                                         'span',
                                         { className: 'btn btn-primary pull-right',
                                             onClick: $this.createNewUser.bind($this) },
@@ -103145,7 +103491,7 @@ var ListUser = function (_React$Component) {
 
 module.exports = ListUser;
 
-},{"../../components/Modal":1,"./CreateNewUserForm":1113,"./EventEmmiter":1116,"./Events":1117,"./UserList":1120,"./UserService":1121,"react":791}],1119:[function(require,module,exports){
+},{"../../components/Modal":1,"../AuthService":162,"./CreateNewUserForm":1113,"./EventEmmiter":1116,"./Events":1117,"./UserList":1120,"./UserService":1121,"react":791}],1119:[function(require,module,exports){
 "use strict";
 
 var ServerEvents;
@@ -103184,6 +103530,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var AuthoritiesListViewEmbed = require('./AuthoritiesListViewEmbed');
 var userService = require('./UserService');
 
+var auth = require('../AuthService');
+
 var UserList = function (_React$Component) {
     _inherits(UserList, _React$Component);
 
@@ -103209,6 +103557,8 @@ var UserList = function (_React$Component) {
                 afterSaveCell: $this.doUpdateUser
             };
 
+            var editable = auth.currentUser().username == "admin";
+
             return _react2.default.createElement(
                 _reactBootstrapTable.BootstrapTable,
                 { data: users, striped: true, hover: true, cellEdit: cellEditProp },
@@ -103220,33 +103570,34 @@ var UserList = function (_React$Component) {
                 ),
                 _react2.default.createElement(
                     _reactBootstrapTable.TableHeaderColumn,
-                    { dataField: 'username' },
+                    { dataField: 'username', editable: editable },
                     'Username'
                 ),
                 _react2.default.createElement(
                     _reactBootstrapTable.TableHeaderColumn,
-                    { dataField: 'name' },
+                    { dataField: 'name', editable: editable },
                     'Name'
                 ),
                 _react2.default.createElement(
                     _reactBootstrapTable.TableHeaderColumn,
-                    { dataField: 'phone' },
+                    { dataField: 'phone', editable: editable },
                     'Phone'
                 ),
                 _react2.default.createElement(
                     _reactBootstrapTable.TableHeaderColumn,
-                    { dataField: 'address' },
+                    { dataField: 'address', editable: editable },
                     'Address'
                 ),
                 _react2.default.createElement(
                     _reactBootstrapTable.TableHeaderColumn,
-                    { dataField: 'remarks' },
+                    { dataField: 'remarks', editable: editable },
                     'Remarks'
                 ),
                 _react2.default.createElement(
                     _reactBootstrapTable.TableHeaderColumn,
                     { dataField: 'remarks', editable: false,
-                        dataFormat: $this.formatAction.bind($this) },
+                        dataFormat: $this.formatAction.bind($this),
+                        hidden: !editable },
                     'Action'
                 )
             );
@@ -103288,7 +103639,7 @@ UserList.defaultProps = {
 
 module.exports = UserList;
 
-},{"./AuthoritiesListViewEmbed":1111,"./UserService":1121,"react":791,"react-bootstrap-table":249}],1121:[function(require,module,exports){
+},{"../AuthService":162,"./AuthoritiesListViewEmbed":1111,"./UserService":1121,"react":791,"react-bootstrap-table":249}],1121:[function(require,module,exports){
 "use strict";
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
