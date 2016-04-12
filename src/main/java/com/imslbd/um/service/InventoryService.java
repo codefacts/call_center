@@ -60,6 +60,9 @@ public class InventoryService {
     private static final String TABLE_NAME = Tables.inventories.name();
     private static final String QUANTITY = "quantity";
     private static final String UNIT_ID_MISMATCH = "UNIT_ID_MISMATCH";
+    private static final String INVALID_SRC_INVENTORY_ID = "INVALID_SRC_INVENTORY_ID";
+    private static final String INVALID_DEST_INVENTORY_ID = "INVALID_DEST_INVENTORY_ID";
+    private static final String SRC_QUANTITY_LESS_THAN_DESTINATION_QUANTITY = "SRC_QUANTITY_LESS_THAN_DESTINATION_QUANTITY";
 
     private final Vertx vertx;
     private final JDBCClient jdbcClient;
@@ -409,9 +412,13 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
-            .then(jsonObject -> vertx.eventBus().publish(UmEvents.PRODUCT_ADDED_TO_INVENTORY,
-                jsonObject
-                    .put(User.UPDATED_BY, user)))
+            .then(jsonObject -> {
+                if (jsonObject != null) {
+                    vertx.eventBus().publish(UmEvents.PRODUCT_ADDED_TO_INVENTORY,
+                        jsonObject
+                            .put(User.UPDATED_BY, user));
+                }
+            })
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
@@ -437,9 +444,13 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
-            .then(jsonObject -> vertx.eventBus().publish(UmEvents.PRODUCT_REMOVED_FROM_INVENTORY,
-                jsonObject
-                    .put(User.UPDATED_BY, user)))
+            .then(jsonObject -> {
+                if (jsonObject != null) {
+                    vertx.eventBus().publish(UmEvents.PRODUCT_REMOVED_FROM_INVENTORY,
+                        jsonObject
+                            .put(User.UPDATED_BY, user));
+                }
+            })
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
@@ -467,9 +478,13 @@ public class InventoryService {
                     "WHERE `id` = " + req.getValue(InventoryProduct.ID), jdbcClient)
                 .map(updateResult -> (JsonObject) (updateResult.getUpdated() > 0 ? req : null)))
             .then(message::reply)
-            .then(jsonObject -> vertx.eventBus().publish(UmEvents.INVENTORY_PRODUCT_EDITED,
-                jsonObject
-                    .put(User.UPDATED_BY, user)))
+            .then(jsonObject -> {
+                if (jsonObject != null) {
+                    vertx.eventBus().publish(UmEvents.INVENTORY_PRODUCT_EDITED,
+                        jsonObject
+                            .put(User.UPDATED_BY, user));
+                }
+            })
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
@@ -498,13 +513,27 @@ public class InventoryService {
                 qqr -> qqr
                     .put(InventoryProduct.INVENTORY_ID,
                         qqr.getLong(InventoryProduct.DEST_INVENTORY_ID)))
-            .decide(req -> req.getLong(InventoryProduct.SRC_INVENTORY_ID)
-                .equals(req.getLong(InventoryProduct.DEST_INVENTORY_ID)) ? SRC_DEST_SAME : Decision.CONTINUE)
-            .on(SRC_DEST_SAME, val -> {
-                message.fail(500, "Destination and source can't be same.");
-            })
+            .mapToPromise(v -> WebUtils.query("select quantity from inventoryProducts where " +
+                "inventoryId = " + v.getLong(InventoryProduct.SRC_INVENTORY_ID) +
+                " AND " +
+                "productId = " + v.getLong(InventoryProduct.PRODUCT_ID), jdbcClient)
+                .map(rs -> (JsonObject) v.put(InventoryProduct.SRC_QUANTITY, rs.getNumRows() <= 0 ? 0 : rs.getResults().get(0).getInteger(0))))
+            .decide(
+                req -> req.getLong(InventoryProduct.SRC_INVENTORY_ID)
+                    .equals(req.getLong(InventoryProduct.DEST_INVENTORY_ID))
+                    ? SRC_DEST_SAME
+                    : req.getLong(InventoryProduct.SRC_INVENTORY_ID) <= 0
+                    ? INVALID_SRC_INVENTORY_ID
+                    : req.getLong(InventoryProduct.DEST_INVENTORY_ID) <= 0
+                    ? INVALID_DEST_INVENTORY_ID
+                    : req.getInteger(InventoryProduct.SRC_QUANTITY) < req.getInteger(InventoryProduct.QUANTITY)
+                    ? SRC_QUANTITY_LESS_THAN_DESTINATION_QUANTITY : Decision.CONTINUE)
+            .on(SRC_DEST_SAME, val -> message.fail(500, "Destination and source can't be same."))
+            .on(INVALID_SRC_INVENTORY_ID, val4 -> message.fail(500, "Invalid source inventory id."))
+            .on(INVALID_DEST_INVENTORY_ID, val5 -> message.fail(500, "Invalid destination inventory id."))
+            .on(SRC_QUANTITY_LESS_THAN_DESTINATION_QUANTITY, val5 -> message.fail(500, "Insufficient product quantity in the source inventory."))
             .contnue(
-                val1 -> Promises.from((JsonObject) val1)
+                val1 -> Promises.from(val1)
                     .mapToPromise(
                         qqr -> query("SELECT quantity, unitId FROM `inventoryProducts` " +
                             " WHERE " +

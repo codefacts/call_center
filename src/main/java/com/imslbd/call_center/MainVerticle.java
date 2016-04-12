@@ -3,6 +3,7 @@ package com.imslbd.call_center;
 import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
 import com.imslbd.um.Tables;
+import com.imslbd.um.UmApp;
 import com.imslbd.um.UmEvents;
 import com.imslbd.um.controller.AuthController;
 import com.imslbd.um.controller.UmUris;
@@ -35,6 +36,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTOptions;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CookieHandler;
@@ -64,6 +66,7 @@ final public class MainVerticle extends AbstractVerticle {
     public static final String PROP_CALL_REVIEW_HOST = "CALL_REVIEW_HOST";
     private JDBCClient jdbcClient;
     private JDBCClient jdbcClientUm;
+    private EventDumpingService eventDumpingService;
 
     @Override
     public void start() throws Exception {
@@ -85,6 +88,9 @@ final public class MainVerticle extends AbstractVerticle {
         //Register Listeners
         registerFilters(router);
         registerControllers(router);
+
+        if (!MyApp.loadConfig().getBoolean("dev-mode")) Thread.sleep(2000);
+
         getVertx().createHttpServer().requestHandler(router::accept).listen(MyApp.loadConfig().getInteger(PROP_PORT));
         System.out.println("<----------------------------------WEB_SERVER_STARTED------------------------------------->");
         System.out.println("PORT: " + MyApp.loadConfig().getInteger(PROP_PORT));
@@ -229,6 +235,7 @@ final public class MainVerticle extends AbstractVerticle {
 
         //UM
         jdbcClientUm = JDBCClient.createNonShared(vertx, MyApp.loadConfig().getJsonObject("um_database"));
+        UmApp.setMongoClient(MongoClient.createShared(vertx, MyApp.loadConfig().getJsonObject("mongo-db")));
 
 
         Promises
@@ -382,6 +389,39 @@ final public class MainVerticle extends AbstractVerticle {
                 LOGGER.error("Error creating UnitService", e);
             })
         ;
+
+        eventDumpingService = new EventDumpingService(jdbcClientUm);
+
+        regStoreEvent(UmEvents.PRODUCT_CREATED);
+        regStoreEvent(UmEvents.PRODUCT_UPDATED);
+        regStoreEvent(UmEvents.PRODUCT_DELETED);
+
+        regStoreEvent(UmEvents.PRODUCT_ADDED_TO_INVENTORY);
+        regStoreEvent(UmEvents.PRODUCT_REMOVED_FROM_INVENTORY);
+        regStoreEvent(UmEvents.NEW_PRODUCT_INSERTED_TO_INVENTORY);
+        regStoreEvent(UmEvents.PRODUCT_DELETED_FROM_INVENTORY);
+
+        regStoreEvent(UmEvents.SELL_CREATED);
+        regStoreEvent(UmEvents.SELL_UPDATED);
+        regStoreEvent(UmEvents.SELL_DELETED);
+
+        regStoreEvent(UmEvents.INVENTORY_CREATED);
+        regStoreEvent(UmEvents.INVENTORY_UPDATED);
+        regStoreEvent(UmEvents.INVENTORY_DELETED);
+        regStoreEvent(UmEvents.INVENTORY_PRODUCT_EDITED);
+        regStoreEvent(UmEvents.INVENTORY_PRODUCT_TRANSFERRED);
+
+        regStoreEvent(UmEvents.UNIT_CREATED);
+        regStoreEvent(UmEvents.UNIT_UPDATED);
+        regStoreEvent(UmEvents.UNIT_DELETED);
+
+        regStoreEvent(UmEvents.USER_CREATED);
+        regStoreEvent(UmEvents.USER_UPDATED);
+        regStoreEvent(UmEvents.USER_DELETED);
+    }
+
+    private void regStoreEvent(String event) {
+        vertx.eventBus().consumer(event, eventDumpingService.storeEvent(event));
     }
 
     private void devLogin(EventBus eventBus) {

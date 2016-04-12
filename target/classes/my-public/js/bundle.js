@@ -29232,7 +29232,7 @@ var AuthService = function () {
     }, {
         key: 'currentUser',
         value: function currentUser() {
-            return user;
+            return user || {};
         }
     }, {
         key: 'authToken',
@@ -30419,7 +30419,7 @@ var AddRemoveEditProducts = React.createClass({
                     'Add'
                 ),
                 auth.currentUser().username != "admin" ? null : React.createElement(
-                    'div',
+                    'span',
                     null,
                     React.createElement(
                         'span',

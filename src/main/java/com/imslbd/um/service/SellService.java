@@ -464,8 +464,9 @@ public class SellService {
                                     .then(tpl2 -> tpl2.accept((id, list) -> {
                                         message.reply(id);
                                     }))
-                                    .then(v -> vertx.eventBus().publish(UmEvents.SELL_CREATED,
-                                        sll.put(Sell.SELL_UNITS, sellItems).put(User.CREATED_BY, user)))
+                                    .then(
+                                        v -> vertx.eventBus().publish(UmEvents.SELL_CREATED,
+                                            sll.put(Sell.SELL_UNITS, sellItems).put(User.CREATED_BY, user)))
                                     .error(e -> ExceptionUtil.fail(message, e))
                                     .complete(p -> con.close())
                                 ;

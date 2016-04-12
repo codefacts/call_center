@@ -709,7 +709,7 @@ public class ProductService {
     }
 
     public void findAllDecomposed(Message<JsonObject> message) {
-        Promises.from(message.body())
+        Promises.from(message.body() == null ? new JsonObject() : message.body())
             .map(removeNullsTransformation::transform)
             .mapToPromise(params -> {
 

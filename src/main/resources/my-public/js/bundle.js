@@ -30419,7 +30419,7 @@ var AddRemoveEditProducts = React.createClass({
                     'Add'
                 ),
                 auth.currentUser().username != "admin" ? null : React.createElement(
-                    'div',
+                    'span',
                     null,
                     React.createElement(
                         'span',

@@ -16,4 +16,5 @@ public class InventoryProduct {
     public static final String NEQ_QUANTITY = "new_quantity";
     public static final String CREATE_DATE = "CREATE_DATE";
     public static final String CREATED_BY = "CREATED_BY";
+    public static final String SRC_QUANTITY = "SRC_QUANTITY";
 }

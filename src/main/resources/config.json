@@ -30,6 +30,8 @@
         "password": "",
         "url": "jdbc:mysql://localhost:3306/users_db"
       },
+      "mongo-db": {
+      },
       "CALL_ALLOW_HOSTS": [
         "localhost",
         "182.160.99.114",
