@@ -1,0 +1,33 @@
+<style>
+    table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    }
+    th, td {
+    padding: 5px;
+    }
+</style>
+
+<table style="width:100%">
+    <tr>
+        <th>#</th>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Unit Price</th>
+        <th>Total</th>
+    </tr>
+
+    ~for s in sales:
+
+    <tr>
+        <td>~s.no~</td>
+        <td>~s.Product~</td>
+        <td>~s.Quantity~</td>
+        <td>~s.Unit~</td>
+        <td>~s.UnitPrice~</td>
+        <td>~s.Total~</td>
+    </tr>
+
+    :~
+</table>

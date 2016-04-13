@@ -2,6 +2,7 @@ package com.imslbd.call_center;
 
 import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
+import com.imslbd.um.service.MailService;
 import com.imslbd.um.Tables;
 import com.imslbd.um.UmApp;
 import com.imslbd.um.UmEvents;
@@ -33,9 +34,9 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.jwt.JWTAuth;
-import io.vertx.ext.auth.jwt.JWTOptions;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.mail.MailClient;
+import io.vertx.ext.mail.MailConfig;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -236,7 +237,10 @@ final public class MainVerticle extends AbstractVerticle {
         //UM
         jdbcClientUm = JDBCClient.createNonShared(vertx, MyApp.loadConfig().getJsonObject("um_database"));
         UmApp.setMongoClient(MongoClient.createShared(vertx, MyApp.loadConfig().getJsonObject("mongo-db")));
+        UmApp.setMailClient(MailClient.createShared(vertx, new MailConfig(MyApp.loadConfig().getJsonObject("mail"))));
 
+
+        new MailService(vertx);
 
         Promises
             .when(

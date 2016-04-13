@@ -30,6 +30,13 @@
         "password": "",
         "url": "jdbc:mysql://localhost:3306/users_db"
       },
+      "mail": {
+        "hostname": "smtp.gmail.com",
+        "port": 587,
+        "username": "um3065651",
+        "password": "conform-me-564",
+        "keepAlive": false
+      },
       "mongo-db": {
       },
       "CALL_ALLOW_HOSTS": [
