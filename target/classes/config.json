@@ -35,7 +35,13 @@
         "port": 587,
         "username": "um3065651",
         "password": "conform-me-564",
-        "keepAlive": false
+        "keepAlive": false,
+        "from": "um3065651@gmail.com",
+        "to": "sohan09014@gmail.com",
+        "afterNoonHour": 17,
+        "afterNoonMin": 0,
+        "nightHour": 23,
+        "nightMin": 59
       },
       "mongo-db": {
       },

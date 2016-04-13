@@ -345,8 +345,9 @@ public class InventoryService {
     }
 
     public void findAllProducts(Message<Object> message) {
-        query("select * from " + Tables.inventoryProducts + " " +
-            "where inventoryId = " + message.body(), jdbcClient)
+        final String where = message.body() == null ? "" : "where inventoryId = " + message.body();
+        query(
+            "select * from " + Tables.inventoryProducts + " " + where, jdbcClient)
             .map(ResultSet::getRows)
             .then(list -> message.reply(
                 new JsonObject().put(DATA, list)))

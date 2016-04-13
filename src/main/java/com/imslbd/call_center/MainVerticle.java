@@ -163,6 +163,9 @@ final public class MainVerticle extends AbstractVerticle {
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_SELL))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_SELL))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.DELETE_SELL))
+
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_TRACK))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_TRACK))
         ;
 
         bridgeOptions
@@ -238,9 +241,26 @@ final public class MainVerticle extends AbstractVerticle {
         jdbcClientUm = JDBCClient.createNonShared(vertx, MyApp.loadConfig().getJsonObject("um_database"));
         UmApp.setMongoClient(MongoClient.createShared(vertx, MyApp.loadConfig().getJsonObject("mongo-db")));
         UmApp.setMailClient(MailClient.createShared(vertx, new MailConfig(MyApp.loadConfig().getJsonObject("mail"))));
+        UmApp.setJdbcClient(jdbcClientUm);
 
 
         new MailService(vertx);
+
+        WebUtils.query("select * from " + Tables.sellInventoryTracking + " where id < 0", jdbcClientUm)
+            .map(rs -> {
+                String[] colNames = new String[rs.getNumColumns()];
+                return rs.getColumnNames().toArray(colNames);
+            })
+            .then(fields -> {
+                final SellInventoryTrackerService sellInventoryTrackerService = new SellInventoryTrackerService(Arrays.asList(fields));
+                eventBus.consumer(UmEvents.SELL_CREATED, sellInventoryTrackerService::track);
+                eventBus.consumer(UmEvents.CREATE_TRACK, sellInventoryTrackerService::createTrack);
+                eventBus.consumer(UmEvents.UPDATE_TRACK, sellInventoryTrackerService::updateTrack);
+                eventBus.consumer(UmEvents.FIND_TRACK, sellInventoryTrackerService::findTrack);
+                eventBus.consumer(UmEvents.FIND_ALL_TRACKS, sellInventoryTrackerService::findAllTracks);
+            })
+            .error(e -> LOGGER.error("Error creating TrackService", e))
+        ;
 
         Promises
             .when(

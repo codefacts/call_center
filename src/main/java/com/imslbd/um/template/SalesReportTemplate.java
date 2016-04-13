@@ -24,10 +24,10 @@ public class SalesReportTemplate extends Template {
 
             int ix = 0;
             arguments.add("Product", jsonArray.getString(ix++));
-            arguments.add("Quantity", jsonArray.getString(ix++));
+            arguments.add("Quantity", jsonArray.getInteger(ix++) + "");
             arguments.add("Unit", jsonArray.getString(ix++));
-            arguments.add("UnitPrice", jsonArray.getString(ix++));
-            arguments.add("Total", jsonArray.getString(ix++));
+            arguments.add("UnitPrice", jsonArray.getInteger(ix++) + "");
+            arguments.add("Total", jsonArray.getInteger(ix++) + "");
         });
     }
 

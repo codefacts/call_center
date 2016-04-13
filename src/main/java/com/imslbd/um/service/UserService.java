@@ -250,7 +250,7 @@ public class UserService {
         final JsonObject currentUser = new JsonObject(message.headers().get(AUTH_TOKEN));
 
         System.out.println();
-        Promises.callable(() -> transformationPipeline.transform(message.body()))
+        Promises.callable(() -> createTransformationPipeline.transform(message.body()))
             .decideAndMap(
                 user -> {
                     List<ValidationResult> validationResults = createValidationPipeline.validate(user);
@@ -302,7 +302,7 @@ public class UserService {
 
         final JsonObject currentUser = new JsonObject(message.headers().get(AUTH_TOKEN));
 
-        Promises.callable(() -> createTransformationPipeline.transform(message.body()))
+        Promises.callable(() -> transformationPipeline.transform(message.body()))
             .decideAndMap(
                 user -> {
                     List<ValidationResult> validationResults = validationPipeline.validate(user);

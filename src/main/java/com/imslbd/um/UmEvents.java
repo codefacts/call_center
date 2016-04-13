@@ -73,6 +73,10 @@ public class UmEvents {
     public static final String SELL_CREATED = "SELL_CREATED";
     public static final String SELL_UPDATED = "SELL_UPDATED";
     public static final String SELL_DELETED = "SELL_DELETED";
+    public static final java.lang.String CREATE_TRACK = "CREATE_TRACK";
+    public static final java.lang.String UPDATE_TRACK = "UPDATE_TRACK";
+    public static final java.lang.String FIND_TRACK = "FIND_TRACK";
+    public static final java.lang.String FIND_ALL_TRACKS = "FIND_ALL_TRACK";
 
     public static final String um(String des) {
         return "UM." + des;
