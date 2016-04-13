@@ -18,6 +18,7 @@ import io.vertx.ext.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -69,6 +70,8 @@ public class EventDumpingService {
 
     private JsonObject compose(JsonObject jsonObject, HashSet<String> collections) {
 
+        final HashMap<String, Object> tmpMap = new HashMap<>();
+
         jsonObject.forEach(e -> {
 
             final Object val = e.getValue();
@@ -92,7 +95,7 @@ public class EventDumpingService {
                     if (user == null) {
                         collections.add("users");
                     }
-                    e.setValue(val == null ? null : user);
+                    tmpMap.put(key(key), val == null ? null : user);
 
                 } else if (key.endsWith("unitId")) {
 
@@ -101,7 +104,7 @@ public class EventDumpingService {
                     if (unit == null) {
                         collections.add("units");
                     }
-                    e.setValue(val == null ? null : unit);
+                    tmpMap.put(key(key), val == null ? null : unit);
 
                 } else if (key.endsWith("productId")) {
 
@@ -111,7 +114,7 @@ public class EventDumpingService {
                         collections.add("products");
                     }
 
-                    e.setValue(val == null ? null : product);
+                    tmpMap.put(key(key), val == null ? null : product);
 
                 } else if (key.endsWith("inventoryId")) {
 
@@ -121,7 +124,7 @@ public class EventDumpingService {
                         collections.add("inventories");
                     }
 
-                    e.setValue(val != null ? null : inventory);
+                    tmpMap.put(key(key), val == null ? null : inventory);
 
                 } else if (key.equals(User.CREATED_BY)) {
 
@@ -146,6 +149,9 @@ public class EventDumpingService {
                 }
             }
         });
+
+        jsonObject.getMap().putAll(tmpMap);
+
         return jsonObject;
     }
 
