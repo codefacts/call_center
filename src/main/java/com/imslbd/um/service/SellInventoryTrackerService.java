@@ -2,10 +2,7 @@ package com.imslbd.um.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.imslbd.um.InventoryProduct;
-import com.imslbd.um.Tables;
-import com.imslbd.um.UmApp;
-import com.imslbd.um.UmErrorCodes;
+import com.imslbd.um.*;
 import com.imslbd.um.model.Sell;
 import com.imslbd.um.model.SellUnit;
 import com.imslbd.um.model.User;
@@ -17,14 +14,18 @@ import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformatio
 import io.crm.pipelines.validator.ValidationResult;
 import io.crm.pipelines.validator.ValidationResultBuilder;
 import io.crm.promise.Promises;
+import io.crm.promise.intfs.Defer;
+import io.crm.promise.intfs.MapToPromiseHandler;
 import io.crm.promise.intfs.Promise;
 import io.crm.util.ExceptionUtil;
 import io.crm.util.Util;
+import io.crm.web.util.Converters;
 import io.crm.web.util.WebUtils;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -181,33 +182,88 @@ public class SellInventoryTrackerService {
         });
 
         Promises.when(builder.build())
-            .map(longs -> new JsonArray(longs))
+            .map(JsonArray::new)
             .then(message::reply)
             .error(e -> ExceptionUtil.fail(message, e))
         ;
 
     }
 
-    public void updateTrack(Message<JsonArray> message) {
+    public void updateTrack(Message<JsonObject> message) {
 
-        final List<JsonObject> list = message.body().getList();
+        WebUtils.getConnection(UmApp.getJdbcClient())
+            .mapToPromise(con -> {
+                try {
+                    final Defer<Void> defer = Promises.defer();
+                    con.setAutoCommit(false, Util.makeDeferred(defer));
+                    return defer.promise().error(e -> con.close()).map(v -> (SQLConnection) con);
+                } catch (Exception ex) {
+                    con.close();
+                    return Promises.fromError(ex);
+                }
+            })
+            .mapToPromise(con -> {
+                try {
 
-        list.forEach(jsonObject -> {
-            Promises.callable(() -> transformationPipeline.transform(jsonObject))
-                .mapToPromise(js -> {
+                    final long productId = Converters.toLong(message.body().getValue("productId"));
 
-                    final JsonObject jsa = includeExcludeTransformation.transform(js);
+                    return WebUtils.delete("sellInventoryTracking",
+                        new JsonObject()
+                            .put("productId", productId), con).map(v -> con).error(e -> con.close());
 
+                } catch (Exception ex) {
+                    con.close();
+                    return Promises.<SQLConnection>fromError(ex);
+                }
+            })
+            .mapToPromise(con -> {
 
-                    final Long id = jsa.getLong(User.ID);
-                    return WebUtils.update("sellInventoryTracking", jsa, id, UmApp.getJdbcClient());
+                try {
 
-                })
-                .then(ur -> ur.getKeys().getLong(0))
-                .then(message::reply)
-                .error(e -> ExceptionUtil.fail(message, e))
-            ;
-        });
+                    final List<JsonObject> list = message.body().getJsonArray("tracks").getList();
+
+                    final ImmutableList.Builder<Promise<Long>> builder = ImmutableList.builder();
+
+                    list.forEach(jsonObject -> {
+
+                        final Promise<Long> tracking = Promises.callable(() -> transformationPipeline.transform(jsonObject))
+                            .mapToPromise(js -> {
+
+                                final JsonObject jsa = includeExcludeTransformation.transform(js);
+
+                                final Long id = jsa.getLong(User.ID);
+
+                                return WebUtils
+                                    .delete("sellInventoryTracking",
+                                        new JsonObject()
+                                            .put(User.ID, id), con)
+                                    .mapToPromise(
+                                        v -> WebUtils.create("sellInventoryTracking", jsa, con))
+                                    .map(vx -> id)
+                                    ;
+                            });
+
+                        builder.add(tracking);
+                    });
+
+                    return Promises.when(builder.build())
+                        .map(JsonArray::new)
+                        .mapToPromise(ja -> {
+                            final Defer<Void> defer = Promises.defer();
+                            con.commit(Util.makeDeferred(defer));
+                            return defer.promise().map(jk -> ja);
+                        })
+                        .error(e -> con.close())
+                        ;
+
+                } catch (Exception ex) {
+                    con.close();
+                    return Promises.fromError(ex);
+                }
+            })
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
     }
 
     public void findTrack(Message<JsonObject> message) {
@@ -215,6 +271,19 @@ public class SellInventoryTrackerService {
     }
 
     public void findAllTracks(Message<JsonObject> message) {
-
+        Promises
+            .callable(() -> {
+                final JsonObject body = message.body();
+                return Converters.toLong(body.getValue("productId"));
+            })
+            .mapToPromise(
+                productId -> WebUtils.query(
+                    "select * from sellInventoryTracking" +
+                        (productId == null || productId <= 0 ? "" : ("where productId = " + productId)), UmApp.getJdbcClient()))
+            .map(ResultSet::getRows)
+            .map(JsonArray::new)
+            .then(message::reply)
+            .error(e -> ExceptionUtil.fail(message, e))
+        ;
     }
 }

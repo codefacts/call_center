@@ -166,6 +166,8 @@ final public class MainVerticle extends AbstractVerticle {
 
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.CREATE_TRACK))
             .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.UPDATE_TRACK))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_TRACK))
+            .addInboundPermitted(new PermittedOptions().setAddress(UmEvents.FIND_ALL_TRACKS))
         ;
 
         bridgeOptions
