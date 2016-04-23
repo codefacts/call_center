@@ -190,8 +190,9 @@ public class UserService {
                     WebUtils.query("select count(*) as totalCount " + from, jdbcClient)
                         .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
                     WebUtils.query(
-                        "select * " + from + " "
-                            + UmUtils.limitOffset(page, size), jdbcClient)
+                        "select * " + from +
+                            " order by username asc" +
+                            " " + UmUtils.limitOffset(page, size), jdbcClient)
                         .map(resultSet3 -> new JsonObject()
                             .put(HEADERS, resultSet3.getColumnNames()
                                 .stream()

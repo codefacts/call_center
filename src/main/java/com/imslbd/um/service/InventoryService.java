@@ -15,6 +15,7 @@ import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformatio
 import io.crm.pipelines.validator.ValidationPipeline;
 import io.crm.pipelines.validator.ValidationResult;
 import io.crm.pipelines.validator.Validator;
+import io.crm.pipelines.validator.composer.FieldValidatorComposer;
 import io.crm.pipelines.validator.composer.JsonObjectValidatorComposer;
 import io.crm.promise.Decision;
 import io.crm.promise.Promises;
@@ -137,8 +138,7 @@ public class InventoryService {
                     .notNullEmptyOrWhiteSpace()
                     .stringType())
             .field(Inventory.REMARKS,
-                fieldValidatorComposer -> fieldValidatorComposer
-                    .stringType());
+                FieldValidatorComposer::stringType);
         return validatorComposer.getValidatorList();
     }
 
@@ -155,8 +155,9 @@ public class InventoryService {
                     query("select count(*) as totalCount " + from, jdbcClient)
                         .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
                     query(
-                        "select * " + from + " "
-                            + UmUtils.limitOffset(page, size), jdbcClient)
+                        "select * " + from +
+                            " " + "order by name asc" +
+                            " " + UmUtils.limitOffset(page, size), jdbcClient)
                         .map(resultSet3 -> new JsonObject()
                             .put(HEADERS, resultSet3.getColumnNames()
                                 .stream()

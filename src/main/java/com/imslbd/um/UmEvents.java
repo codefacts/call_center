@@ -76,7 +76,7 @@ public class UmEvents {
     public static final java.lang.String CREATE_TRACK = "CREATE_TRACK";
     public static final java.lang.String UPDATE_TRACK = "UPDATE_TRACK";
     public static final java.lang.String FIND_TRACK = "FIND_TRACK";
-    public static final java.lang.String FIND_ALL_TRACKS = "FIND_ALL_TRACK";
+    public static final java.lang.String FIND_ALL_TRACKS = "FIND_ALL_TRACKS";
 
     public static final String um(String des) {
         return "UM." + des;

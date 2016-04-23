@@ -93,11 +93,13 @@ public class UnitService {
         int page = params.getInteger(Services.PAGE, 1);
         int size = params.getInteger(Services.SIZE, DEFAULT_PAGE_SIZE);
 
-        WebUtils.query("select * from units " + UmUtils.limitOffset(page, size), jdbcClient)
+        WebUtils.query("select * from units" +
+            " order by name asc" +
+            " " + UmUtils.limitOffset(page, size), jdbcClient)
             .map(rs ->
                 new JsonObject()
                     .put(Services.DATA, rs.getRows()))
-            .then(rs -> message.reply(rs))
+            .then(message::reply)
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }

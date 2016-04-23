@@ -213,7 +213,8 @@ public class ProductService {
                     WebUtils.query("select count(*) as totalCount " + fromWhere, prmsArray, jdbcClient)
                         .map(resultSet -> resultSet.getResults().get(0).getLong(0)),
                     WebUtils.query(
-                        "select " + pSel + ", " + prSel + ", " + uSel + ", " + uSel2 + " " + fromWhere + " " + groupBy + " " +
+                        "select " + pSel + ", " + prSel + ", " + uSel + ", " + uSel2 + " " +
+                            fromWhere + " " + groupBy + " " +
                             UmUtils.limitOffset(page, size), prmsArray, jdbcClient)
                         .map(resultSet3 ->
                             Tpls.of(new JsonObject()
@@ -296,7 +297,11 @@ public class ProductService {
 
                                 return
                                     jsonObject
-                                        .put(DATA, productsMap.values().stream().collect(Collectors.toList()));
+                                        .put(DATA, productsMap.values().stream()
+                                            .sorted(
+                                                (o1, o2) -> o1.getString(Product.NAME)
+                                                    .compareToIgnoreCase(o2.getString(Product.NAME)))
+                                            .collect(Collectors.toList()));
                             })))
                     .map(tpl2 -> tpl2.apply(
                         (totalCount, js) ->
@@ -726,7 +731,8 @@ public class ProductService {
                     where = whr.isEmpty() ? "" : "where " + whr;
                 }
 
-                return WebUtils.query("select * from products " + where, prmsArray, jdbcClient);
+                return WebUtils.query("select * from products " + where +
+                    " order by name asc", prmsArray, jdbcClient);
             })
             .map(ResultSet::getRows)
             .then(

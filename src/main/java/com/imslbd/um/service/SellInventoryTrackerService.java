@@ -231,7 +231,7 @@ public class SellInventoryTrackerService {
 
                                 final JsonObject jsa = includeExcludeTransformation.transform(js);
 
-                                final Long id = jsa.getLong(User.ID);
+                                final Long id = jsa.getLong(User.ID, 0L);
 
                                 return WebUtils
                                     .delete("sellInventoryTracking",
@@ -239,7 +239,7 @@ public class SellInventoryTrackerService {
                                             .put(User.ID, id), con)
                                     .mapToPromise(
                                         v -> WebUtils.create("sellInventoryTracking", jsa, con))
-                                    .map(vx -> id)
+                                    .map(vx -> vx.getKeys().getLong(0))
                                     ;
                             });
 
@@ -274,15 +274,20 @@ public class SellInventoryTrackerService {
         Promises
             .callable(() -> {
                 final JsonObject body = message.body();
-                return Converters.toLong(body.getValue("productId"));
+                return body == null ? 0 : Converters.toLong(body.getValue("productId"));
             })
             .mapToPromise(
                 productId -> WebUtils.query(
                     "select * from sellInventoryTracking" +
-                        (productId == null || productId <= 0 ? "" : ("where productId = " + productId)), UmApp.getJdbcClient()))
+                        (productId == null || productId <= 0
+                            ? ""
+                            : (" where productId = " + productId)), UmApp.getJdbcClient()))
             .map(ResultSet::getRows)
             .map(JsonArray::new)
-            .then(message::reply)
+            .then(jsonArray -> message.reply(
+                new JsonObject()
+                    .put(Services.DATA, jsonArray)
+            ))
             .error(e -> ExceptionUtil.fail(message, e))
         ;
     }
