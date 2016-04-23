@@ -2,6 +2,7 @@ package com.imslbd.call_center;
 
 import com.imslbd.call_center.controller.*;
 import com.imslbd.call_center.service.*;
+import com.imslbd.um.UmDashboardController;
 import com.imslbd.um.service.MailService;
 import com.imslbd.um.Tables;
 import com.imslbd.um.UmApp;
@@ -569,6 +570,9 @@ final public class MainVerticle extends AbstractVerticle {
         router.post(UmUris.LOGIN.value).handler(BodyHandler.create());
         router.post(UmUris.LOGIN.value).handler(authController::login);
         router.post(UmUris.LOGOUT.value).handler(authController::logout);
+
+        final UmDashboardController umDashboardController = new UmDashboardController();
+        router.get("/um-salesByDate").handler(umDashboardController::dashboard);
     }
 
     private void otherwiseController(final Router router) {
