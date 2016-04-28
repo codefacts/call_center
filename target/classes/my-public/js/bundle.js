@@ -29058,6 +29058,8 @@ var Print = require('./print/Print');
 
 var handlers = {};
 
+var eb = require('./EventBus');
+
 var App;
 module.exports = App = React.createClass({
     displayName: 'App',
@@ -29077,6 +29079,8 @@ module.exports = App = React.createClass({
         handlers[Events.PRINT] = function (req) {
 
             req.onComplete = function () {
+
+                eb().reconnect();
 
                 $this.setState({
                     isPrinterVisible: false,
@@ -29181,7 +29185,7 @@ module.exports = App = React.createClass({
     }
 });
 
-},{"./AuthService":162,"./EventEmitter":167,"./Events":168,"./Menu":171,"./SidebarToggleButton":174,"./navbar/Navbar":192,"./navbar/NavbarCollapse":193,"./navbar/NavbarHeader":194,"./print/Print":859,"./sidebar-main/SidebarHeader":1114,"./sidebar-main/SidebarMain":1115,"react":792}],162:[function(require,module,exports){
+},{"./AuthService":162,"./EventBus":166,"./EventEmitter":167,"./Events":168,"./Menu":171,"./SidebarToggleButton":174,"./navbar/Navbar":192,"./navbar/NavbarCollapse":193,"./navbar/NavbarHeader":194,"./print/Print":859,"./sidebar-main/SidebarHeader":1114,"./sidebar-main/SidebarMain":1115,"react":792}],162:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -29514,75 +29518,170 @@ module.exports = DateView = React.createClass({
 },{"../components/functions":2,"react":792}],166:[function(require,module,exports){
 'use strict';
 
-//..................................................................................
-//Create EventBus
-
 var EventBus = require("vertx3-eventbus-client");
-var eb = new EventBus('http://' + location.host + '/eventbus');
 var document = require('./document');
 var authSerice = require('./AuthService');
 var Uris = require('./Uris');
 
-eb.onopen = function onopen() {
+var handlers = []; //address, headers, callback
 
-    console.info("EVENT_BUS OPENED");
+function newEventBus(onOpenHandler) {
 
-    var event = new Event('EVENT_BUS_CONNECTED');
+    onOpenHandler = onOpenHandler || function () {
+        return null;
+    };
 
-    document.dispatchEvent(event);
+    var _onOpen = function _onOpen() {
+        window.document.removeEventListener('EVENT_BUS_CONNECTED', _onOpen);
+        onOpenHandler();
+    };
+
+    window.document.addEventListener('EVENT_BUS_CONNECTED', _onOpen);
+
+    var eb = new EventBus('http://' + location.host + '/eventbus');
+
+    eb.onopen = function onopen() {
+
+        console.info("EVENT_BUS OPENED");
+
+        var event = new Event('EVENT_BUS_CONNECTED');
+
+        document.dispatchEvent(event);
+    };
+
+    eb.onclose = function () {
+
+        console.info("EVENT_BUS CLOSED");
+
+        var event = new Event('EVENT_BUS_DISCONNECTED');
+
+        document.dispatchEvent(event);
+    };
+
+    return eb;
+}
+
+var eb = newEventBus();
+
+var reconnect = function reconnect(callback) {
+
+    callback = callback || function () {
+        return null;
+    };
+
+    console.log("EVENT_BUS_RECONNECTING");
+
+    var _closeHandler = function _closeHandler() {
+
+        window.document.removeEventListener('EVENT_BUS_DISCONNECTED', _closeHandler);
+
+        eb = newEventBus(function () {
+
+            handlers.forEach(function (reg) {
+                var address = reg.address;
+                var headers = reg.headers;
+                var callback = reg.callback;
+
+                eb.registerHandler(address, headers, callback);
+            });
+
+            window.setTimeout(function () {
+
+                if (eb.state !== EventBus.OPEN) {
+
+                    console.log("EVENT_BUS_RECONNECT_FAILED");
+                    window.alert("Disconnected from server. Please login again.");
+                    location.href = Uris.toAbsoluteUri(Uris.LOGIN_URI);
+
+                    return;
+                }
+            }, 2000);
+
+            console.log("EVENT_BUS_RECONNECTED");
+
+            callback();
+        });
+    };
+
+    window.document.addEventListener('EVENT_BUS_DISCONNECTED', _closeHandler);
+
+    eb.close();
 };
 
-eb.onclose = function () {
+var send = function send(address, message, headers, callback) {
 
-    console.info("EVENT_BUS CLOSED");
+    function _send() {
+        headers = headers || {};
+        if (authSerice.isLoggedIn()) {
+            headers['authToken'] = authSerice.authToken();
+        } else {
+            location.href = Uris.toAbsoluteUri(Uris.LOGIN_URI);
+        }
 
-    var event = new Event('EVENT_BUS_DISCONNECTED');
+        eb.send(address, message, headers, callback);
+    }
 
-    document.dispatchEvent(event);
+    if (eb.state !== EventBus.OPEN) {
+
+        reconnect(function () {
+            _send();
+        });
+    }
+
+    _send();
 };
 
-var send = eb.send;
+/**
+ * Publish a message
+ *
+ * @param {String} address
+ * @param {Object} message
+ * @param {Object} [headers]
+ */
+var publish = function publish(address, message, headers) {
 
-eb.send = function (address, message, headers, callback) {
+    eb.publish(address, message, headers);
+};
 
-    if (eb.state != EventBus.OPEN) {
+/**
+ * Register a new handler
+ *
+ * @param {String} address
+ * @param {Object} [headers]
+ * @param {Function} callback
+ */
+var registerHandler = function registerHandler(address, headers, callback) {
 
-        //console.log("EVENT_BUS_RECONNECTING");
-        //
-        //eb = new EventBus('http://' + location.host + '/eventbus');
-        //
-        //eb.onopen = () => {
-        //    console.log("EVENT_BUS_RECONNECTED");
-        //    send.call(eb, address, message, headers, callback);
-        //};
-        //
-        //eb.onerror = () => {
-        //    console.log("EVENT_BUS_RECONNECT_FAILED");
-        //    window.alert("Disconnected from server. Please login again.");
-        //    location.href = Uris.toAbsoluteUri(Uris.LOGIN_URI);
-        //    callback(new Error("Invalid state error."), null);
-        //};
+    handlers.push({ address: address, headers: headers, callback: callback });
 
-        console.log("EVENT_BUS_RECONNECT_FAILED");
-        window.alert("Disconnected from server. Please login again.");
-        location.href = Uris.toAbsoluteUri(Uris.LOGIN_URI);
-        callback(new Error("Invalid state error."), null);
+    eb.registerHandler(address, headers, callback);
+};
 
-        return;
-    }
+/**
+ * Unregister a handler
+ *
+ * @param {String} address
+ * @param {Object} [headers]
+ * @param {Function} callback
+ */
+var unregisterHandler = function unregisterHandler(address, headers, callback) {
 
-    headers = headers || {};
-    if (authSerice.isLoggedIn()) {
-        headers['authToken'] = authSerice.authToken();
-    } else {
-        location.href = Uris.toAbsoluteUri(Uris.LOGIN_URI);
-    }
+    handlers = handlers.filter(function (h) {
+        return !(h.address === address && h.headers === headers && h.callback === callback);
+    });
 
-    send.call(eb, address, message, headers, callback);
+    eb.unregisterHandler(address, headers, callback);
+};
+
+/**
+ * Closes the connection to the EvenBus Bridge.
+ */
+var close = function close() {
+    eb.close();
 };
 
 module.exports = function () {
-    return eb;
+    return { reconnect: reconnect, send: send, publish: publish, registerHandler: registerHandler, unregisterHandler: unregisterHandler, close: close };
 };
 
 },{"./AuthService":162,"./Uris":175,"./document":176,"vertx3-eventbus-client":855}],167:[function(require,module,exports){
@@ -32208,9 +32307,9 @@ var Dashboard = require('./pages/Dashboard');
 
 var Uris = require('./Uris');
 
-//Create and initialize app when eventbus initialization complete.
+var initApp = function initApp() {
 
-document.addEventListener("EVENT_BUS_CONNECTED", function () {
+    window.document.removeEventListener('EVENT_BUS_CONNECTED', initApp);
 
     ReactDom.render(React.createElement(
         _reactRouter.Router,
@@ -32262,7 +32361,9 @@ document.addEventListener("EVENT_BUS_CONNECTED", function () {
             React.createElement(_reactRouter.Route, { path: Uris.DASHBOARD, component: Dashboard })
         )
     ), document.getElementById('app'));
-});
+};
+
+document.addEventListener("EVENT_BUS_CONNECTED", initApp);
 
 //Create the EventBus
 window.ebb = require('././EventBus');
@@ -100136,6 +100237,12 @@ module.exports = CreateSell = React.createClass({
             }
         });
 
+        keyDownListeners.push(function (e) {
+            if (e.altKey && e.keyCode === 78) {
+                $('#print-button').click();
+            }
+        });
+
         KeyEventHandlers.addAllKeyDownListeners(keyDownListeners);
     },
     componentWillUnmount: function componentWillUnmount() {
@@ -100410,7 +100517,7 @@ module.exports = CreateSell = React.createClass({
                     { className: 'row' },
                     React.createElement(
                         'div',
-                        { className: 'col-md-6' },
+                        { className: 'col-md-4' },
                         React.createElement(
                             'a',
                             { href: Uris.toAbsoluteUri(Uris.SELL.VIEW, { id: sell.id }),
@@ -100426,14 +100533,14 @@ module.exports = CreateSell = React.createClass({
                     ),
                     React.createElement(
                         'div',
-                        { className: 'col-md-6' },
+                        { className: 'col-md-8' },
                         React.createElement(
                             'button',
-                            { className: 'btn btn-success btn-lg', style: { fontWeight: 'bold' },
+                            { id: 'print-button', className: 'btn btn-success btn-lg', style: { fontWeight: 'bold' },
                                 onClick: function onClick(e) {
                                     $this.closeModal();$this.printSell(sell);
                                 } },
-                            'Print'
+                            'Print (ALT+N)'
                         ),
                         React.createElement(
                             'button',
@@ -100638,10 +100745,10 @@ module.exports = CreateSellGrid = _react2.default.createClass({
                 }),
                 action: _react2.default.createElement(
                     'div',
-                    null,
+                    { style: { minWidth: '100px' } },
                     _react2.default.createElement(
                         'button',
-                        { className: 'btn btn-danger',
+                        { className: 'btn btn-danger btn-sm',
                             onClick: function onClick(e) {
                                 $this.crearUnit(unit);
                             } },
@@ -100649,7 +100756,7 @@ module.exports = CreateSellGrid = _react2.default.createClass({
                     ),
                     _react2.default.createElement(
                         'span',
-                        { className: 'btn btn-danger pull-right',
+                        { className: 'btn btn-danger pull-right btn-sm',
                             onClick: function onClick() {
                                 $this.deleteSellUnit(unit);
                             } },
@@ -102766,6 +102873,7 @@ var unitService = require('../unit/UnitService');
 var inventoryServie = require('../inventory/InventoryService');
 
 var Promise = require('bluebird');
+var Stream = require('streamjs');
 
 var trkSv = require('./TrackService');
 
@@ -103187,6 +103295,15 @@ module.exports = SellTrackingSettings = React.createClass({
         var rawProdsById = $this.state.rawProductsById;
         var productsById = $this.state.productsById;
 
+        var tracks = $this.state.tracks || [];
+
+        var tracksByIPId = tracks.reduce(function (map, tk) {
+            if (!!tk.inventoryProductId) {
+                map[tk.inventoryProductId] = tk;
+            }
+            return map;
+        }, {});
+
         return React.createElement(
             'select',
             { className: 'form-control',
@@ -103199,7 +103316,12 @@ module.exports = SellTrackingSettings = React.createClass({
                 { value: 0 },
                 'Select Raw Product'
             ),
-            prods.map(function (pp) {
+            Stream(prods).filter(function (pp) {
+
+                var id = pp.productId || pp.id;
+
+                return !tracksByIPId[id] || prod.inventoryProductId == id;
+            }).map(function (pp) {
 
                 var id = pp.productId || pp.id;
 
@@ -103208,7 +103330,7 @@ module.exports = SellTrackingSettings = React.createClass({
                     { key: id, value: id },
                     (rawProdsById[id] || productsById[id] || {}).name
                 );
-            })
+            }).toArray()
         );
     },
 
@@ -103255,7 +103377,7 @@ module.exports = SellTrackingSettings = React.createClass({
     }
 });
 
-},{"../inventory/InventoryService":184,"../product/ProductService":869,"../unit/UnitService":1120,"./TrackService":897,"bluebird":195,"react":1112}],896:[function(require,module,exports){
+},{"../inventory/InventoryService":184,"../product/ProductService":869,"../unit/UnitService":1120,"./TrackService":897,"bluebird":195,"react":1112,"streamjs":1113}],896:[function(require,module,exports){
 'use strict';
 
 var ServerEvents = {

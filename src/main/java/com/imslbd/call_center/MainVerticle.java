@@ -14,7 +14,7 @@ import com.imslbd.um.model.Product;
 import com.imslbd.um.model.Sell;
 import com.imslbd.um.service.*;
 import io.crm.QC;
-import io.crm.pipelines.transformation.impl.json.object.RemoveNullsTransformation;
+import io.crm.transformation.impl.json.object.RemoveNullsTransformation;
 import io.crm.promise.Promises;
 import io.crm.util.Util;
 import io.crm.web.ApiEvents;
