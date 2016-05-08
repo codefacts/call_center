@@ -27,6 +27,9 @@
     <orderEntry type="library" name="Maven: org.glassfish:javax.json:1.0.4" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:org.eclipse.persistence.jpa.jpql:2.6.0" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.persistence:org.eclipse.persistence.core:2.6.0" level="project" />
+    <orderEntry type="library" name="Maven: org.jooq:jooq-meta:3.7.3" level="project" />
+    <orderEntry type="library" name="Maven: org.jooq:jooq:3.7.3" level="project" />
+    <orderEntry type="library" name="Maven: org.jooq:jooq-codegen:3.7.3" level="project" />
     <orderEntry type="library" name="Maven: io.vertx:vertx-core:3.2.1" level="project" />
     <orderEntry type="library" name="Maven: io.netty:netty-common:4.0.33.Final" level="project" />
     <orderEntry type="library" name="Maven: io.netty:netty-buffer:4.0.33.Final" level="project" />
