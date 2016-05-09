@@ -1,1 +1,0 @@
-window.site = {reactjs: {}, hash: HashParams()}
