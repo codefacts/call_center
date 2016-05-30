@@ -581,7 +581,7 @@ public class SellService {
             .error(e -> ExceptionUtil.fail(message, e));
     }
 
-    public void delete(Message<String> message) {
+    public void delete(Message<Object> message) {
 
         final JsonObject user = new JsonObject(message.headers().get(AUTH_TOKEN));
 
